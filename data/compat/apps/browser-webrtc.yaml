@@ -1,0 +1,27 @@
+id: browser-webrtc
+display_name: Browser WebRTC Meetings
+matches:
+  - browser
+  - chromium
+  - chrome
+  - firefox
+launch_commands:
+  - firefox
+  - chromium
+  - google-chrome-stable
+  - google-chrome
+notes:
+  - Prefer the native portal path for browser-based meetings.
+  - Keep OBS as a fallback only when the browser capture path is degraded.
+screen_strategies:
+  - backend: portal-screencast
+    when:
+      - wayland_session
+      - pipewire_active
+      - xdg_desktop_portal_active
+      - xdph_active
+  - backend: obs-virtual-camera
+    expose_as: camera
+    when:
+      - obs_available
+      - v4l2loopback_present

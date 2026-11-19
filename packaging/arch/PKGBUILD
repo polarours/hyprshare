@@ -1,0 +1,37 @@
+# Maintainer: Your Name <your@email.com>
+pkgname=hyprshare
+pkgver=0.6.0
+pkgrel=1
+pkgdesc="Linux-native sharing platform for Hyprland and Wayland environments (CLI and daemon)"
+arch=('x86_64')
+url="https://github.com/yourusername/hyprshare"
+license=('GPL-3.0-only')
+depends=('openssl' 'sdbus-cpp' 'pipewire' 'gcc-libs' 'glibc')
+makedepends=('cmake' 'ninja' 'git')
+optdepends=(
+  'avahi: mDNS discovery support'
+  'hyprshare-desktop: native GUI front-end'
+)
+source=("$pkgname-$pkgver.tar.gz")
+sha256sums=('SKIP')
+
+build() {
+  cd "$pkgname-$pkgver"
+  cmake -S . -B build -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DBUILD_TESTING=OFF
+  cmake --build build
+}
+
+check() {
+  cd "$pkgname-$pkgver"
+  cmake -S . -B build -G Ninja -DBUILD_TESTING=ON
+  cmake --build build
+  ctest --test-dir build --output-on-failure
+}
+
+package() {
+  cd "$pkgname-$pkgver"
+  DESTDIR="$pkgdir" cmake --install build
+}

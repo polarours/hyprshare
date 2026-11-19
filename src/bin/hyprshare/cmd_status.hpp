@@ -1,0 +1,13 @@
+#pragma once
+
+#include <string>
+#include <vector>
+
+#include "command_registry.hpp"
+
+namespace hyprshare::cli {
+
+std::expected<int, std::string> handle_status(CommandContext& ctx, std::vector<std::string>& args);
+std::expected<int, std::string> handle_config(CommandContext& ctx, std::vector<std::string>& args);
+
+}  // namespace hyprshare::cli

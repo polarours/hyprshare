@@ -1,0 +1,26 @@
+id: us.zoom.Zoom
+display_name: Zoom
+matches:
+  - zoom
+  - us.zoom.Zoom
+launch_commands:
+  - zoom
+  - zoom-us
+notes:
+  - Direct Wayland capture should remain the default path.
+  - The bridge and virtual camera paths stay available for packaging-specific regressions.
+screen_strategies:
+  - backend: portal-screencast
+    when:
+      - wayland_session
+      - pipewire_active
+      - xdg_desktop_portal_active
+      - xdph_active
+  - backend: xwayland-video-bridge
+    when:
+      - xwaylandvideobridge_available
+  - backend: obs-virtual-camera
+    expose_as: camera
+    when:
+      - obs_available
+      - v4l2loopback_present

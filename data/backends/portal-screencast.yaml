@@ -1,0 +1,12 @@
+id: portal-screencast
+capability: screen
+support_tier: primary
+summary: Native ScreenCast portal flow backed by PipeWire and xdg-desktop-portal-hyprland.
+optional: false
+launch_supported: false
+prerequisites:
+  - wayland_session
+  - pipewire_active
+  - wireplumber_active
+  - xdg_desktop_portal_active
+  - xdph_active

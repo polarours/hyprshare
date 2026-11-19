@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=hyprshare
+GenericName=Sharing Platform
+Comment=Share files, clipboard, and screen sessions on a local network
+Exec=hyprshare-desktop
+Icon=hyprshare
+Terminal=false
+Categories=Utility;Network;
+Keywords=share;file;clipboard;hyprland;wayland;
+StartupNotify=true

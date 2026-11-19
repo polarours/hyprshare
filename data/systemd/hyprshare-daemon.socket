@@ -1,0 +1,9 @@
+[Unit]
+Description=hyprshare daemon socket
+
+[Socket]
+ListenStream=%t/hyprshare/hyprshared.sock
+DirectoryMode=0700
+
+[Install]
+WantedBy=sockets.target

@@ -1,0 +1,9 @@
+id: obs-virtual-camera
+capability: screen
+support_tier: supported
+summary: Route screen content through OBS and expose it as a virtual camera for apps with broken direct capture.
+optional: true
+launch_supported: true
+prerequisites:
+  - obs_available
+  - v4l2loopback_present

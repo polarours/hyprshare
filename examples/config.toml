@@ -1,0 +1,17 @@
+[general]
+default_scope = "local-app"
+discoverability = "paired-only"
+log_level = "info"
+
+[screen]
+preferred_backends = ["portal-screencast", "obs-virtual-camera"]
+allow_fallback_to_obs = true
+
+[files]
+receive_dir = "~/Downloads/hyprshare"
+folder_shares_read_only_by_default = true
+
+[security]
+require_explicit_clipboard_approval = true
+default_session_ttl_minutes = 30
+

@@ -1,0 +1,15 @@
+/build/
+/.cache/
+/.idea/
+/.vscode/
+/.mimocode/
+/web/node_modules/
+/web/dist/
+/desktop/src-tauri/target/
+/desktop/src-tauri/gen/
+compile_commands.json
+Testing/
+*.log
+*.tar.gz
+*.zip
+

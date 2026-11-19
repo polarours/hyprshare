@@ -1,0 +1,16 @@
+Source: hyprshare
+Section: utils
+Priority: optional
+Maintainer: Your Name <your@email.com>
+Build-Depends: debhelper-compat (= 13), cmake (>= 3.28), ninja-build, libssl-dev, libsdbus-c++-dev, libpipewire-0.3-dev
+Standards-Version: 4.6.2
+Homepage: https://github.com/yourusername/hyprshare
+
+Package: hyprshare
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Linux-native sharing platform for Hyprland and Wayland
+ hyprshare is a serious, Linux-native sharing platform for Hyprland and Wayland
+ environments. It aims to unify screen sharing, capability sharing, diagnostics,
+ compatibility knowledge, and long-term peer-sharing workflows behind a coherent
+ CLI-first architecture.

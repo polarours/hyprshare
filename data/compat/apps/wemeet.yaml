@@ -1,0 +1,24 @@
+id: com.tencent.wemeet
+display_name: Tencent Meeting / WeMeet
+matches:
+  - wemeet
+  - tencent-meeting
+  - tencent meeting
+launch_commands:
+  - wemeetapp
+  - wemeet
+notes:
+  - Prefer direct portal capture on healthy Hyprland and Wayland environments.
+  - Keep the OBS virtual camera path available for client builds with unreliable screen capture integration.
+screen_strategies:
+  - backend: portal-screencast
+    when:
+      - wayland_session
+      - pipewire_active
+      - xdg_desktop_portal_active
+      - xdph_active
+  - backend: obs-virtual-camera
+    expose_as: camera
+    when:
+      - obs_available
+      - v4l2loopback_present

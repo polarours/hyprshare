@@ -1,0 +1,12 @@
+[Unit]
+Description=hyprshare daemon
+After=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/hyprshared
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

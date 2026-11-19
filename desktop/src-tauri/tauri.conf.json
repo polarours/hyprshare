@@ -1,0 +1,46 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "hyprshare",
+  "version": "0.6.0",
+  "identifier": "io.github.hyprshare.hyprshare",
+  "build": {
+    "beforeDevCommand": "npm --prefix ../../web run dev -- --host 127.0.0.1",
+    "devUrl": "http://127.0.0.1:5173",
+    "beforeBuildCommand": "npm --prefix ../../web install && npm --prefix ../../web run build",
+    "frontendDist": "../../web/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "hyprshare",
+        "width": 900,
+        "height": 640,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "category": "Utility",
+    "shortDescription": "Linux-native sharing platform for Hyprland and Wayland",
+    "longDescription": "A desktop front-end for hyprshare: share files, clipboard, and screen sessions on a local network from a native window.",
+    "copyright": "",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "targets": ["deb", "appimage", "app"],
+    "linux": {
+      "deb": {
+        "depends": ["hyprshare"]
+      }
+    }
+  }
+}

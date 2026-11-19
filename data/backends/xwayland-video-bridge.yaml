@@ -1,0 +1,9 @@
+id: xwayland-video-bridge
+capability: screen
+support_tier: best_effort
+summary: Compatibility bridge for some XWayland meeting apps that cannot consume native Wayland capture directly.
+optional: true
+launch_supported: false
+prerequisites:
+  - wayland_session
+  - xwaylandvideobridge_available
