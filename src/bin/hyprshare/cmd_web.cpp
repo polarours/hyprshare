@@ -2,11 +2,13 @@
 
 #include <chrono>
 #include <cctype>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include "command_registry.hpp"
 #include "command_utils.hpp"
@@ -277,6 +279,24 @@ std::expected<int, std::string> handle_web(CommandContext& ctx, std::vector<std:
 
     hyprshare::web::ApiServer server(port, host);
     register_routes(server, ctx);
+
+    // Serve the frontend next to the API when built into the install tree.
+    // HYPRSHARE_WEB_DIR is the explicit override; the other candidates cover
+    // the AUR layout (/usr/share/hyprshare/web), a local build tree, and the
+    // working directory.
+    std::vector<std::filesystem::path> web_candidates;
+    if (const char* from_env = std::getenv("HYPRSHARE_WEB_DIR")) {
+      if (from_env[0] != '\0') web_candidates.emplace_back(from_env);
+    }
+    web_candidates.emplace_back("/usr/share/hyprshare/web");
+    web_candidates.emplace_back("web/dist");
+    web_candidates.emplace_back(ctx.paths.source_dir / "web" / "dist");
+    for (const auto& candidate : web_candidates) {
+      if (std::filesystem::exists(candidate / "index.html")) {
+        server.set_static_dir(candidate);
+        break;
+      }
+    }
 
     auto started = server.start();
     if (!started.has_value()) {

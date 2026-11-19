@@ -7,6 +7,7 @@
 /web/dist/
 /desktop/src-tauri/target/
 /desktop/src-tauri/gen/
+/tui/target/
 compile_commands.json
 Testing/
 *.log

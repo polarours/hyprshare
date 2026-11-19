@@ -7,6 +7,8 @@
 
 #include <arpa/inet.h>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <sstream>
 #include <thread>
@@ -29,6 +31,52 @@ const char* reason_phrase(const int status) {
     case 500: return "Internal Server Error";
     default: return "OK";
   }
+}
+
+const char* content_type_for(const std::filesystem::path& path) {
+  const auto extension = path.extension().string();
+  if (extension == ".html") return "text/html; charset=utf-8";
+  if (extension == ".js") return "text/javascript; charset=utf-8";
+  if (extension == ".css") return "text/css; charset=utf-8";
+  if (extension == ".json" || extension == ".map") return "application/json";
+  if (extension == ".svg") return "image/svg+xml";
+  if (extension == ".png") return "image/png";
+  if (extension == ".ico") return "image/x-icon";
+  if (extension == ".woff2") return "font/woff2";
+  return "application/octet-stream";
+}
+
+// Resolve a request path against the static directory. Reject anything that
+// escapes the directory via ".." so the web UI cannot expose arbitrary files.
+std::filesystem::path resolve_static(const std::filesystem::path& root, const std::string& url_path) {
+  std::filesystem::path relative(url_path);
+  if (relative.is_absolute() || !relative.has_root_directory()) {
+    // A URL path always starts with '/'; strip it before joining.
+    relative = std::filesystem::path(url_path).relative_path();
+  }
+  const auto candidate = (root / relative).lexically_normal();
+  const auto root_normal = root.lexically_normal();
+  const auto root_string = root_normal.string();
+  const auto candidate_string = candidate.string();
+  if (candidate_string != root_string &&
+      candidate_string.rfind(root_string + std::filesystem::path::preferred_separator, 0) != 0) {
+    return {};
+  }
+  return candidate;
+}
+
+ApiResponse serve_file(const std::filesystem::path& file) {
+  std::ifstream input(file, std::ios::binary);
+  if (!input.is_open()) {
+    return {};
+  }
+  std::ostringstream buffer;
+  buffer << input.rdbuf();
+  ApiResponse response;
+  response.status = 200;
+  response.content_type = content_type_for(file);
+  response.body = buffer.str();
+  return response;
 }
 
 }  // namespace
@@ -109,6 +157,10 @@ bool ApiServer::is_running() const {
 
 void ApiServer::register_handler(const std::string& method, const std::string& path, ApiHandler handler) {
   handlers_.push_back({method + " " + path, handler});
+}
+
+void ApiServer::set_static_dir(std::filesystem::path dir) {
+  static_dir_ = std::move(dir);
 }
 
 void ApiServer::accept_loop() {
@@ -224,6 +276,27 @@ ApiResponse ApiServer::route_request(const ApiRequest& request) {
   for (const auto& [pattern, handler] : handlers_) {
     if (key == pattern) {
       return handler(request);
+    }
+  }
+
+  // No API route matched. Serve the web frontend (if configured) so a single
+  // `hyprshare web serve` provides both the API and the UI.
+  if (request.method == "GET" && !static_dir_.empty()) {
+    const auto resolved = resolve_static(static_dir_, path);
+    if (!resolved.empty() && std::filesystem::is_regular_file(resolved)) {
+      auto response = serve_file(resolved);
+      if (response.status == 200) {
+        return response;
+      }
+    }
+    // Client-side routes (e.g. /transfer) have no file: hand out index.html.
+    // Only extension-less paths are SPA routes — keep 404 for unknown API
+    // paths and missing assets so mistakes stay visible.
+    if (std::filesystem::path(path).extension().empty() && path.rfind("/api/", 0) != 0) {
+      auto index = serve_file(static_dir_ / "index.html");
+      if (index.status == 200) {
+        return index;
+      }
     }
   }
 

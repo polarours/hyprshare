@@ -5,6 +5,16 @@ All notable changes to hyprshare will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.1] - 2026-11-19
+
+- **One install, four front-ends**: the Arch package now builds and installs
+  the CLI/daemon, a new `hyprshare-tui` terminal UI (ratatui dashboard for
+  device, inbox and clipboard), the Tauri desktop GUI, and the React web UI.
+  The web UI is now actually served by `hyprshare web serve`, which returns
+  the frontend for `/` and SPA routes alongside the REST API, with path
+  traversal protection.
+- **AUR packaging consolidated** into a single `hyprshare` package.
+
 ## [0.6.0] - 2026-11-19
 
 Initial release.

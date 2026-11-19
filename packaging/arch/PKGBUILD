@@ -1,26 +1,40 @@
 # Maintainer: polarours <polarours@outlook.com>
 pkgname=hyprshare
-pkgver=0.6.0
+pkgver=0.6.1
 pkgrel=1
-pkgdesc="Linux-native sharing platform for Hyprland and Wayland environments (CLI and daemon)"
+pkgdesc="Linux-native sharing platform for Hyprland and Wayland (CLI, TUI, desktop GUI and web UI)"
 arch=('x86_64')
 url="https://github.com/polarours/hyprshare"
 license=('GPL-3.0-only')
-depends=('openssl' 'sdbus-cpp' 'pipewire' 'gcc-libs' 'glibc')
-makedepends=('cmake' 'ninja')
-optdepends=(
-  'avahi: mDNS discovery support'
-  'hyprshare-desktop: native GUI front-end'
+depends=(
+  'openssl' 'sdbus-cpp' 'pipewire' 'gcc-libs' 'glibc'
+  'webkit2gtk-4.1' 'gtk3'
 )
-source=("$pkgname-$pkgver.tar.gz::https://github.com/polarours/hyprshare/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('3c6175030054dbf7a44736b6346aec5781c1f05245cc0f576ce36240a015d97f')
+makedepends=(
+  'cmake' 'ninja'
+  'cargo' 'rust' 'nodejs' 'npm' 'pkgconf'
+)
+optdepends=('avahi: mDNS discovery support')
+source=("hyprshare-$pkgver.tar.gz::https://github.com/polarours/hyprshare/archive/refs/tags/v$pkgver.tar.gz")
+sha256sums=('SKIP')
 
 build() {
   cd "$pkgname-$pkgver"
+
+  # C++ CLI + daemon (tests built for check()).
   cmake -S . -B build -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX=/usr
   cmake --build build
+
+  # Web frontend (embedded into the GUI, also served by `hyprshare web serve`).
+  cd web && npm ci && npm run build && cd ..
+
+  # Tauri GUI.
+  cd desktop/src-tauri && cargo build --release --locked && cd ../..
+
+  # Terminal UI.
+  cd tui && cargo build --release --locked
 }
 
 check() {
@@ -30,5 +44,24 @@ check() {
 
 package() {
   cd "$pkgname-$pkgver"
+
   DESTDIR="$pkgdir" cmake --install build
+
+  # Desktop GUI.
+  install -Dm755 desktop/src-tauri/target/release/hyprshare-desktop "$pkgdir/usr/bin/hyprshare-desktop"
+  install -Dm644 desktop/hyprshare.desktop "$pkgdir/usr/share/applications/hyprshare.desktop"
+  install -Dm644 desktop/src-tauri/icons/icon.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/hyprshare.svg"
+  for size in 32 128 256; do
+    case "$size" in
+      256) src="128x128@2x.png" ;;
+      *)   src="${size}x${size}.png" ;;
+    esac
+    install -Dm644 "desktop/src-tauri/icons/$src" "$pkgdir/usr/share/icons/hicolor/${size}x${size}/apps/hyprshare.png"
+  done
+
+  # Terminal UI.
+  install -Dm755 tui/target/release/hyprshare-tui "$pkgdir/usr/bin/hyprshare-tui"
+
+  # Web frontend served by `hyprshare web serve`.
+  cp -r web/dist "$pkgdir/usr/share/hyprshare/web"
 }

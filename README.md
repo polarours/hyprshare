@@ -2,8 +2,22 @@
 
 `hyprshare` is a Linux-native sharing platform for Hyprland and Wayland. It
 unifies file transfer, clipboard exchange, screen capture, peer trust, and
-system diagnostics behind one CLI-first architecture — plus a native desktop
-GUI on top of the same CLI.
+system diagnostics behind one CLI-first architecture. One install gives you
+four front-ends over the same CLI: the `hyprshare` command, the `hyprshare-tui`
+terminal UI, the `hyprshare-desktop` GUI, and the `hyprshare web serve` web UI.
+
+## Front-ends
+
+- **CLI** — `hyprshare --help`, 34 top-level commands
+- **TUI** — `hyprshare-tui`: a ratatui dashboard (device, inbox, clipboard;
+  Tab/1-3 to switch, r to refresh, w to write the clipboard, q to quit)
+- **Desktop GUI** — `hyprshare-desktop`: a macOS-style Tauri window with six
+  pages and light/dark/system themes
+- **Web UI** — `hyprshare web serve`: REST API plus the React frontend at
+  `http://127.0.0.1:8080/` (override the frontend location with
+  `HYPRSHARE_WEB_DIR`)
+
+Every front-end is a subprocess caller of the CLI, so they cannot disagree.
 
 ## Features
 
@@ -32,12 +46,15 @@ Requirements: CMake ≥ 3.28, Ninja, a C++23 compiler, OpenSSL, sdbus-c++,
 PipeWire headers. The GUI additionally needs Rust, Node.js/npm.
 
 ```bash
-# 1. CLI + daemon
+# Build CLI + daemon
 cmake -S . -B build -G Ninja
 cmake --build build
 ctest --test-dir build --output-on-failure   # 13 test suites
 
-# 2. Desktop GUI (builds the web frontend, then embeds it)
+# Build TUI (cargo)
+cargo build --release --manifest-path tui/Cargo.toml
+
+# Build desktop GUI (builds the web frontend, then embeds it)
 cd web && npm install && npm run build && cd ..
 cd desktop/src-tauri && cargo build --release
 ```
@@ -49,7 +66,9 @@ cd desktop/src-tauri && cargo build --release
 
 # GUI (needs the CLI on PATH)
 export PATH="$PWD/build:$PATH"
-./desktop/src-tauri/target/release/hyprshare-desktop
+./tui/target/release/hyprshare-tui             # terminal UI
+./desktop/src-tauri/target/release/hyprshare-desktop   # desktop GUI
+./build/hyprshare web serve --port 8080        # web UI: open http://127.0.0.1:8080/
 
 # End-to-end file transfer between two machines
 ./build/hyprshare share file photo.jpg --stage          # machine A
@@ -79,10 +98,8 @@ Decisions are recorded as ADRs in [docs/adr/](docs/adr/README.md).
 
 ## Installation
 
-Arch Linux: two AUR packages, `hyprshare` (CLI + daemon) and
-`hyprshare-desktop` (GUI), defined in
-[packaging/arch/](packaging/arch/README.md). Debian, Fedora, and Nix
-scaffolding is provided under `packaging/`.
+Arch Linux: one AUR package, `hyprshare`, provides the CLI/daemon, TUI,
+desktop GUI and web UI; see [packaging/arch/](packaging/arch/README.md).
 
 ## Documentation
 

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <filesystem>
 #include <thread>
 #include <cstdint>
 #include <expected>
@@ -41,6 +42,11 @@ class ApiServer {
 
   void register_handler(const std::string& method, const std::string& path, ApiHandler handler);
 
+  // Serve the web frontend from this directory for GET requests that do not
+  // match an API route. Unknown paths fall back to index.html so the SPA can
+  // handle its own routes. An empty directory disables static serving.
+  void set_static_dir(std::filesystem::path dir);
+
   bool is_running() const;
 
  private:
@@ -54,6 +60,7 @@ class ApiServer {
   std::thread accept_thread_;
   std::atomic<bool> running_{false};
   std::vector<std::pair<std::string, ApiHandler>> handlers_;
+  std::filesystem::path static_dir_;
 };
 
 }  // namespace hyprshare::web
