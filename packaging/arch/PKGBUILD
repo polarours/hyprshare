@@ -16,7 +16,7 @@ makedepends=(
 )
 optdepends=('avahi: mDNS discovery support')
 source=("hyprshare-$pkgver.tar.gz::https://github.com/polarours/hyprshare/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('SKIP')
+sha256sums=('a07426002547617f7ee3f2e0a6bd28be88444fbc26a52fca0345a7fe3bd9bfb4')
 
 build() {
   cd "$pkgname-$pkgver"
