@@ -63,5 +63,6 @@ package() {
   install -Dm755 tui/target/release/hyprshare-tui "$pkgdir/usr/bin/hyprshare-tui"
 
   # Web frontend served by `hyprshare web serve`.
+  install -d "$pkgdir/usr/share/hyprshare"
   cp -r web/dist "$pkgdir/usr/share/hyprshare/web"
 }
