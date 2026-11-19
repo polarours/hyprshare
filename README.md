@@ -71,9 +71,10 @@ export PATH="$PWD/build:$PATH"
 ./build/hyprshare web serve --port 8080        # web UI: open http://127.0.0.1:8080/
 
 # End-to-end file transfer between two machines
-./build/hyprshare share file photo.jpg --stage          # machine A
+./build/hyprshare share file photo.jpg               # machine A: stages a session
 ./build/hyprshare session serve <id> --port 29111 --generate-token
 ./build/hyprshare session fetch <host:port> --token <t> --to ~/recv   # machine B
+# Inspect what would be shared without staging: add --dry-run
 
 # HTTP inbox
 ./build/hyprshare inbox serve --port 8888 --to ~/Downloads --generate-token

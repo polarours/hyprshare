@@ -569,6 +569,7 @@ void print_staged_share_text(const StagedFileShare& staged) {
   std::cout << "Copied files:" << staged.copied_file_count << "\n";
   std::cout << "Copied bytes:" << staged.copied_bytes << "\n\n";
   print_file_manifest_text(staged.manifest);
+  std::cout << "\nNext step:   hyprshare session serve " << staged.session_id << " --generate-token\n";
 }
 
 void print_session_list_text(const std::vector<StagedFileShare>& sessions) {

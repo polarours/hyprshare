@@ -853,7 +853,6 @@ std::expected<model::FileShareManifest, std::string> build_file_manifest(const s
     .is_directory = false,
     .size_bytes = manifest.total_bytes,
   });
-  manifest.notes.push_back("Single-file sharing currently prepares metadata only. Transport will be added later.");
   return manifest;
 }
 
@@ -927,7 +926,6 @@ std::expected<model::FileShareManifest, std::string> build_folder_manifest(
   }
 
   sort_entries(manifest.entries);
-  manifest.notes.push_back("Folder sharing currently prepares metadata only and does not start a transfer service yet.");
   if (manifest.read_only) {
     manifest.notes.push_back("Folder shares default to read-only according to current file-sharing config.");
   }

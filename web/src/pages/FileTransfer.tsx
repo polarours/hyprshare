@@ -174,8 +174,8 @@ function FileTransfer() {
       <Group title="Share a local file or folder">
         <Row
           icon="share"
-          title="Prepare a share"
-          sub="Generate share metadata for a path on this machine."
+          title="Share a path"
+          sub="Stages a share session for a file or folder — serve it from the Devices page."
           right={
             <span>
               <ActionButton variant="secondary" icon="file" onClick={() => sharePath(false)}>File</ActionButton>

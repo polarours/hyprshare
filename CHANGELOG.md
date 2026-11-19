@@ -5,6 +5,15 @@ All notable changes to hyprshare will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+- **`share file` and `share folder` now stage a session by default**, so the
+  transfer chain is one command away; the staged output prints the exact
+  `session serve` follow-up. The manifest-only inspection moved to `--dry-run`
+  (consistent with `share screen --dry-run`), and `--stage` is still accepted.
+  The misleading "Transport will be added later" notes are gone — the transport
+  has existed since the session serving chain landed.
+
 ## [0.6.1] - 2026-11-19
 
 - **One install, four front-ends**: the Arch package now builds and installs

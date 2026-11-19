@@ -206,25 +206,28 @@ std::expected<int, std::string> handle_share(CommandContext& ctx, std::vector<st
       return 1;
     }
 
-    if (ctx.stage) {
-      const auto staged = hyprshare::core::stage_file_share(*manifest, ctx.paths, ctx.runner);
-      if (!staged.has_value()) {
-        std::cerr << "error: " << staged.error() << "\n";
-        return 1;
-      }
-
+    // --dry-run only inspects what would be shared. The default stages the
+    // share as a session, so serving it is one command away; --stage is kept
+    // as an accepted no-op for compatibility.
+    if (ctx.dry_run) {
       if (ctx.json) {
-        print_staged_share_json(*staged);
+        print_file_manifest_json(*manifest);
       } else {
-        print_staged_share_text(*staged);
+        print_file_manifest_text(*manifest);
       }
       return 0;
     }
 
+    const auto staged = hyprshare::core::stage_file_share(*manifest, ctx.paths, ctx.runner);
+    if (!staged.has_value()) {
+      std::cerr << "error: " << staged.error() << "\n";
+      return 1;
+    }
+
     if (ctx.json) {
-      print_file_manifest_json(*manifest);
+      print_staged_share_json(*staged);
     } else {
-      print_file_manifest_text(*manifest);
+      print_staged_share_text(*staged);
     }
     return 0;
   }
@@ -236,25 +239,26 @@ std::expected<int, std::string> handle_share(CommandContext& ctx, std::vector<st
       return 1;
     }
 
-    if (ctx.stage) {
-      const auto staged = hyprshare::core::stage_file_share(*manifest, ctx.paths, ctx.runner);
-      if (!staged.has_value()) {
-        std::cerr << "error: " << staged.error() << "\n";
-        return 1;
-      }
-
+    // Same contract as `share file`: --dry-run inspects, the default stages.
+    if (ctx.dry_run) {
       if (ctx.json) {
-        print_staged_share_json(*staged);
+        print_file_manifest_json(*manifest);
       } else {
-        print_staged_share_text(*staged);
+        print_file_manifest_text(*manifest);
       }
       return 0;
     }
 
+    const auto staged = hyprshare::core::stage_file_share(*manifest, ctx.paths, ctx.runner);
+    if (!staged.has_value()) {
+      std::cerr << "error: " << staged.error() << "\n";
+      return 1;
+    }
+
     if (ctx.json) {
-      print_file_manifest_json(*manifest);
+      print_staged_share_json(*staged);
     } else {
-      print_file_manifest_text(*manifest);
+      print_staged_share_text(*staged);
     }
     return 0;
   }

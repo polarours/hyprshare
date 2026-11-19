@@ -335,6 +335,33 @@ int main(int argc, char** argv) {
     system(("pkill -f 'hyprshare web serve --port " + web_port + "' > /dev/null 2>&1").c_str());
   }
 
+  // `share file` stages a share session by default, so the transfer chain is
+  // one command away; --dry-run only inspects the manifest.
+  {
+    const RunResult staged_default = run_hyprshare(binary, "share file " + share_file);
+    expect(staged_default.exit_code == 0,
+      "`share file` should succeed by default: " + staged_default.output);
+    expect(staged_default.output.find("Session:") != std::string::npos,
+      "`share file` should stage a session by default: " + staged_default.output);
+    expect(staged_default.output.find("session serve") != std::string::npos,
+      "`share file` should print the serve next step: " + staged_default.output);
+    expect(staged_default.output.find("Transport will be added later") == std::string::npos,
+      "`share file` should not claim the transport is missing: " + staged_default.output);
+
+    const RunResult listed = run_hyprshare(binary, "session list --json");
+    expect(listed.exit_code == 0, "`session list --json` should succeed");
+    expect(listed.output.find("probe.txt") != std::string::npos,
+      "the staged session should appear in `session list`: " + listed.output);
+
+    const RunResult inspected = run_hyprshare(binary, "share file " + share_file + " --dry-run --json");
+    expect(inspected.exit_code == 0,
+      "`share file --dry-run` should succeed: " + inspected.output);
+    expect(inspected.output.find("session_id") == std::string::npos,
+      "`share file --dry-run` should not stage a session: " + inspected.output);
+    expect(inspected.output.find("probe.txt") != std::string::npos,
+      "`share file --dry-run` should print the manifest: " + inspected.output);
+  }
+
   // The plugin loader is exercised end to end: a real shared object is loaded
   // through the CLI, and the registration must survive across processes.
   if (argc >= 3) {
