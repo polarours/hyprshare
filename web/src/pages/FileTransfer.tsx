@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { api, uploadFiles, runJson, runAction, desktopAvailable, type Inbox } from '../api'
+import { api, uploadFiles, runJson, runAction, pickPath, desktopAvailable, type Inbox } from '../api'
 import { Icon } from '../components/Icon'
 import { PageHeader, Group, Row, StatusBanner, EmptyState, ActionButton } from '../components/ui'
 
@@ -84,7 +84,7 @@ function FileTransfer() {
   }
 
   const sharePath = async (folder: boolean) => {
-    const path = window.prompt(folder ? 'Folder path to share:' : 'File path to share:')
+    const path = await pickPath(folder ? 'folder' : 'file')
     if (!path) return
     setError(null)
     setShareResult(null)

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { runJson, runAction, desktopAvailable } from '../api'
+import { runJson, runAction, pickPath, desktopAvailable } from '../api'
 import { PageHeader, Group, Row, StatusBanner, EmptyState, ActionButton } from '../components/ui'
 
 interface Snapshot {
@@ -118,7 +118,25 @@ function Tools() {
 
       <Group title="File search">
         <div className="row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
-          <input className="text-input" placeholder="Directory to search (e.g. ~/Projects)" value={searchPath} onChange={e => setSearchPath(e.target.value)} />
+          <div style={{ display: 'flex', gap: 8 }}>
+            <input
+              className="text-input"
+              placeholder="Directory to search (e.g. ~/Projects)"
+              value={searchPath}
+              onChange={e => setSearchPath(e.target.value)}
+              style={{ flex: 1 }}
+            />
+            <ActionButton
+              variant="secondary"
+              icon="folder"
+              onClick={async () => {
+                const picked = await pickPath('folder')
+                if (picked) setSearchPath(picked)
+              }}
+            >
+              Browse…
+            </ActionButton>
+          </div>
           <input className="text-input" placeholder="Pattern (e.g. *.cpp)" value={searchPattern} onChange={e => setSearchPattern(e.target.value)} />
           <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
             <ActionButton icon="search" onClick={doSearch}>Search</ActionButton>

@@ -292,6 +292,26 @@ export async function runAction(args: string[]): Promise<string> {
   return result
 }
 
+/**
+ * Pick a file or folder path. In the desktop app this opens the native file
+ * dialog; in the browser it falls back to a prompt so pages keep working.
+ */
+export async function pickPath(kind: 'file' | 'folder'): Promise<string | null> {
+  if (inTauri()) {
+    const { open } = await import('@tauri-apps/plugin-dialog')
+    const picked = await open({
+      directory: kind === 'folder',
+      multiple: false,
+      title: kind === 'folder' ? 'Choose a folder to share' : 'Choose a file to share',
+    })
+    return typeof picked === 'string' ? picked : null
+  }
+  const answer = window.prompt(
+    kind === 'folder' ? 'Folder path to share:' : 'File path to share:'
+  )
+  return answer && answer.trim() ? answer.trim() : null
+}
+
 /** Run a CLI command with --json and parse the result (cached, read-only). */
 export async function runJson<T = unknown>(args: string[], cacheMs: number = DEFAULT_TTL_MS): Promise<T> {
   const text = await runCommand(args, cacheMs)

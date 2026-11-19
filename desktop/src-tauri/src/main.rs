@@ -80,6 +80,7 @@ fn app_info() -> AppInfo {
 
 fn main() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![cli, upload_files, app_info])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { runJson, runAction, desktopAvailable } from '../api'
+import { runJson, runAction, pickPath, desktopAvailable } from '../api'
 import { PageHeader, Group, Row, StatusBanner, EmptyState, ActionButton } from '../components/ui'
 
 interface SelfIdentity {
@@ -129,7 +129,17 @@ function Devices() {
             value={pairPath}
             onChange={e => setPairPath(e.target.value)}
           />
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
+            <ActionButton
+              variant="secondary"
+              icon="file"
+              onClick={async () => {
+                const picked = await pickPath('file')
+                if (picked) setPairPath(picked)
+              }}
+            >
+              Choose invitation…
+            </ActionButton>
             <ActionButton
               icon="link"
               disabled={!pairPath.trim()}
