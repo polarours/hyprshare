@@ -11,24 +11,27 @@ the GUI is optional:
 ## Publishing
 
 Each AUR package lives in its own git repository with the file named exactly
-`PKGBUILD`. When publishing:
+`PKGBUILD`. The PKGBUILDs here are already filled in with the real upstream
+URL and tag source; when publishing:
 
-1. Copy `PKGBUILD` into the `hyprshare` AUR repo, and `PKGBUILD.desktop` into
+1. Pin the source checksum: after tagging `v<pkgver>` upstream, download the
+   tarball, run `sha256sum`, and replace `SKIP` in both `sha256sums`.
+2. Copy `PKGBUILD` into the `hyprshare` AUR repo, and `PKGBUILD.desktop` into
    the `hyprshare-desktop` AUR repo (renamed to `PKGBUILD`).
-2. Replace the placeholders: `Maintainer`, `url`, and the source line's
-   release tarball URL. Both packages build from the same source tarball
-   `hyprshare-<pkgver>.tar.gz`.
 3. Generate `.SRCINFO` in each repo: `makepkg --printsrcinfo > .SRCINFO`.
-4. Verify locally with `makepkg -si` (or at least `makepkg --syncdeps`).
+4. Verify locally with `makepkg` (both PKGBUILDs here were verified against
+   the real upstream tarball).
+5. Commit and push to the AUR (needs an AUR account with an SSH key).
 
 ## Build notes
 
 - The CLI package uses CMake's install rules (`cmake --install`), which install
-  the binaries and assets to proper `CMAKE_INSTALL_*` paths. `BUILD_TESTING=OFF`
-  keeps the release build lean; `check()` reconfigures with tests on.
+  the binaries and assets to proper `CMAKE_INSTALL_*` paths; `check()` runs
+  the full CTest suite (tests are built as part of `build()`).
 - The GUI package builds the web frontend first (`web/dist` is gitignored and
-  therefore absent from the source tarball), then runs `cargo build --release`
-  in `desktop/src-tauri`. The frontend is embedded into the binary at compile
-  time, and the GUI calls the installed `hyprshare` CLI at runtime.
-- Linux runtime dependencies for the GUI: `webkit2gtk-4.1`, `gtk3`,
-  `libayatana-appindicator`.
+  therefore absent from the source tarball; `npm ci` uses the committed
+  lockfile), then runs `cargo build --release --locked` in `desktop/src-tauri`.
+  The frontend is embedded into the binary at compile time, and the GUI calls
+  the installed `hyprshare` CLI at runtime.
+- Linux runtime dependencies for the GUI (verified with `ldd`):
+  `webkit2gtk-4.1`, `gtk3`.

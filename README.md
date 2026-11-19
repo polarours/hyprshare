@@ -1,94 +1,98 @@
 # hyprshare
 
-`hyprshare` is a serious, Linux-native sharing platform for Hyprland and Wayland environments. It aims to unify screen sharing, capability sharing, diagnostics, compatibility knowledge, and long-term peer-sharing workflows behind a coherent CLI-first architecture instead of a pile of scripts.
+`hyprshare` is a Linux-native sharing platform for Hyprland and Wayland. It
+unifies file transfer, clipboard exchange, screen capture, peer trust, and
+system diagnostics behind one CLI-first architecture — plus a native desktop
+GUI on top of the same CLI.
 
 ## Features
 
-- **CLI-first architecture** with 32 top-level commands and a command registry
-- **Extensible diagnostics** with CheckRegistry and `--fail-on` flag
-- **Daemon support** via `hyprshared` with Unix socket IPC
-- **TLS/mTLS transport** for authenticated peer connections
-- **Portal integration** with xdg-desktop-portal and PipeWire
-- **Data-driven compatibility** with backend and app profiles
-- **Plugin system** where shared objects contribute their own CLI commands
+- **File inbox and share sessions** — stage a file or folder, serve it with a
+  token and a lifetime, fetch from the peer side; HTTP inbox with checksums,
+  extraction, and transfer history
+- **Peer identity and trust** — per-device identity, trusted peers, offline
+  invitations and pairing, mDNS/Avahi discovery
+- **TLS/mTLS transport** — OpenSSL with self-signed X.509 v3 certificates
+- **Clipboard** — read/write plus cross-device sync with persistent history
+- **Screen capture and recording** — xdg-desktop-portal + PipeWire, OBS
+  fallback; MP4/WebM/MKV encoding via ffmpeg
+- **34 top-level commands**: sync, cloud, backup, search, monitor, netdiag,
+  tls, plugin, batch, daemon, update, profile, and more
+- **Desktop GUI** (`hyprshare-desktop`, Tauri): six macOS-style pages with
+  light/dark/system themes; every action is a pass-through to the CLI
+- **Web interface** — REST API + React frontend
+- **Plugin system** — shared objects contributing CLI commands
 
-Not every capability is finished yet. [docs/architecture/overview.md](docs/architecture/overview.md)
-carries an implementation status table that states, for each capability,
-whether it is implemented, partial, or still a placeholder.
+An implementation status table lives in
+[docs/architecture/overview.md](docs/architecture/overview.md).
 
-## Quick Start
+## Build
+
+Requirements: CMake ≥ 3.28, Ninja, a C++23 compiler, OpenSSL, sdbus-c++,
+PipeWire headers. The GUI additionally needs Rust, Node.js/npm.
 
 ```bash
-# Build
+# 1. CLI + daemon
 cmake -S . -B build -G Ninja
 cmake --build build
+ctest --test-dir build --output-on-failure   # 13 test suites
 
-# Run tests
-ctest --test-dir build --output-on-failure
-
-# Check system health
-./build/hyprshare doctor
-
-# Share a screen
-./build/hyprshare share screen --dry-run
+# 2. Desktop GUI (builds the web frontend, then embeds it)
+cd web && npm install && npm run build && cd ..
+cd desktop/src-tauri && cargo build --release
 ```
 
-## CLI Commands
+## Run
 
 ```bash
-# Diagnostics
-hyprshare status
-hyprshare doctor --app wemeet
-hyprshare doctor --fail-on warning
-hyprshare check
+./build/hyprshare doctor                       # health check
 
-# File sharing
-hyprshare share file README.md
-hyprshare share folder docs/
-hyprshare share clipboard --stage
+# GUI (needs the CLI on PATH)
+export PATH="$PWD/build:$PATH"
+./desktop/src-tauri/target/release/hyprshare-desktop
 
-# Screen sharing
-hyprshare share screen --app wemeet --dry-run
+# End-to-end file transfer between two machines
+./build/hyprshare share file photo.jpg --stage          # machine A
+./build/hyprshare session serve <id> --port 29111 --generate-token
+./build/hyprshare session fetch <host:port> --token <t> --to ~/recv   # machine B
 
-# Inbox
-hyprshare inbox receive --port 28556
-hyprshare inbox put <host:port> ./photo.jpg
-
-# Peer management
-hyprshare peer self
-hyprshare peer list
-hyprshare peer add debian-laptop-01 --label "Debian Laptop"
-
-# Session management
-hyprshare session list
-hyprshare session serve <id> --generate-token
-
-# Daemon
-hyprshared  # Start daemon
+# HTTP inbox
+./build/hyprshare inbox serve --port 8888 --to ~/Downloads --generate-token
+./build/hyprshare inbox put <host:8888> file.jpg --token <t>
 ```
+
+See the full command surface with `hyprshare --help`, and per-command usage
+with `hyprshare <command> --help`.
 
 ## Architecture
 
-- `src/lib/core/` - Core libraries (inbox, file_share, clipboard, discovery, trust_store)
-- `src/lib/diagnostics/` - CheckRegistry and extensible checks
-- `src/lib/daemon/` - Daemon with Unix socket IPC
-- `src/lib/tls/` - TLS/mTLS transport layer
-- `src/lib/portal/` - Portal and PipeWire integration
-- `src/bin/hyprshare/` - CLI with command registry
-- `src/bin/hyprshared/` - Daemon binary
+- `src/lib/<module>/` — one static library per concern (core, tls, portal,
+  daemon, cloud, sync, recording, diagnostics, …), public headers in
+  `include/hyprshare/`
+- `src/bin/hyprshare/` — the CLI (command registry + one handler per command)
+- `src/bin/hyprshared/` — the daemon binary (Unix socket IPC)
+- `desktop/` — the Tauri GUI; `web/` — the React frontend shared by GUI and
+  web serve; `mobile/` — Android (Kotlin) and iOS (Swift) client sources
+- `tests/unit/` — per-module test binaries registered with CTest
 
-## Packaging
+Decisions are recorded as ADRs in [docs/adr/](docs/adr/README.md).
 
-Packaging files are provided for:
-- Arch Linux (`packaging/arch/PKGBUILD`)
-- Debian (`packaging/debian/`)
-- Fedora (`packaging/fedora/hyprshare.spec`)
-- Nix (`packaging/nix/default.nix`)
+## Installation
+
+Arch Linux: two AUR packages, `hyprshare` (CLI + daemon) and
+`hyprshare-desktop` (GUI), defined in
+[packaging/arch/](packaging/arch/README.md). Debian, Fedora, and Nix
+scaffolding is provided under `packaging/`.
 
 ## Documentation
 
 - [Architecture Overview](docs/architecture/overview.md)
-- [Threat Model](docs/threat-model/threat-model.md)
-- [Compatibility Matrix](docs/compatibility/matrix.md)
-- [ADR Index](docs/adr/README.md)
+- [User Guide](docs/user-guide.md) · [API Reference](docs/api-reference.md)
+- [Threat Model](docs/threat-model/threat-model.md) ·
+  [Compatibility Matrix](docs/compatibility/matrix.md)
+- [Mobile Protocol](docs/protocol/mobile.md)
 - [Changelog](CHANGELOG.md)
+
+## License
+
+GPL-3.0-only, see [LICENSE](LICENSE).

@@ -1,16 +1,15 @@
-# Maintainer: Your Name <your@email.com>
+# Maintainer: polarours <polarours@outlook.com>
 pkgname=hyprshare-desktop
 pkgver=0.6.0
 pkgrel=1
 pkgdesc="Native desktop front-end for hyprshare (Tauri GUI)"
 arch=('x86_64')
-url="https://github.com/yourusername/hyprshare"
+url="https://github.com/polarours/hyprshare"
 license=('GPL-3.0-only')
 depends=(
   'hyprshare'
   'webkit2gtk-4.1'
   'gtk3'
-  'libayatana-appindicator'
 )
 makedepends=(
   'cargo'
@@ -19,22 +18,21 @@ makedepends=(
   'npm'
   'webkit2gtk-4.1'
   'gtk3'
-  'librsvg'
-  'imagemagick'
   'pkgconf'
 )
-source=("hyprshare-$pkgver.tar.gz")
+source=("hyprshare-$pkgver.tar.gz::https://github.com/polarours/hyprshare/archive/refs/tags/v$pkgver.tar.gz")
 sha256sums=('SKIP')
 
 build() {
   # web/dist is gitignored, so it is not in the source tarball: build the
   # frontend explicitly before embedding it into the Rust binary.
   cd "hyprshare-$pkgver/web"
-  npm install
+  npm ci
   npm run build
 
   cd "../desktop/src-tauri"
-  cargo build --release
+  # Cargo.lock is in the tarball, so the build is reproducible.
+  cargo build --release --locked
 }
 
 package() {
@@ -48,7 +46,6 @@ package() {
     "desktop/hyprshare.desktop" \
     "$pkgdir/usr/share/applications/hyprshare.desktop"
 
-  # Scalable icon for the .desktop entry.
   install -Dm644 \
     "desktop/src-tauri/icons/icon.svg" \
     "$pkgdir/usr/share/icons/hicolor/scalable/apps/hyprshare.svg"
