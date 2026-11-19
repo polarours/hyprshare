@@ -21,7 +21,7 @@ makedepends=(
   'pkgconf'
 )
 source=("hyprshare-$pkgver.tar.gz::https://github.com/polarours/hyprshare/archive/refs/tags/v$pkgver.tar.gz")
-sha256sums=('SKIP')
+sha256sums=('3c6175030054dbf7a44736b6346aec5781c1f05245cc0f576ce36240a015d97f')
 
 build() {
   # web/dist is gitignored, so it is not in the source tarball: build the
