@@ -37,6 +37,47 @@ enum Message {
     Loaded(Model),
 }
 
+/// Start `inbox serve` in the background with a fresh token. The server
+/// blocks waiting for a sender, so it must be spawned detached.
+fn spawn_inbox_serve() -> Result<String, String> {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|e| e.to_string())?
+        .as_nanos();
+    let token = format!("{:016x}{:08x}", nanos, std::process::id());
+    let port = 30000 + (nanos % 20000) as u16;
+
+    // The CLI default receive dir may not exist; pick a known-writable one
+    // so the background server doesn't fail on startup. No extra deps needed.
+    let to = std::env::var_os("HOME")
+        .map(std::path::PathBuf::from)
+        .unwrap_or_else(std::env::temp_dir)
+        .join("Downloads")
+        .join("hyprshare-tui");
+    std::fs::create_dir_all(&to).map_err(|e| format!("failed to create receive dir: {e}"))?;
+
+    Command::new("hyprshare")
+        .args([
+            "inbox",
+            "serve",
+            "--port",
+            &port.to_string(),
+            "--token",
+            &token,
+            "--to",
+            &to.to_string_lossy(),
+        ])
+        .stdin(std::process::Stdio::null())
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
+        .spawn()
+        .map_err(|e| format!("failed to start inbox serve: {e}"))?;
+    Ok(format!(
+        "Serving on :{port} · token {token} · LAN peers: use this machine's IP:{port}"
+    ))
+}
+
 fn spawn_load(sender: mpsc::Sender<Message>) {
     thread::spawn(move || {
         let model = Model::load(&cli_json).unwrap_or_default();
@@ -75,6 +116,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             last_refresh = Instant::now();
                         }
                         KeyCode::Char('w') => app.write_mode = !app.write_mode,
+                        KeyCode::Char('s') if !app.write_mode && app.tab == 1 => {
+                            app.serve_status = Some(
+                                spawn_inbox_serve()
+                                    .unwrap_or_else(|e| format!("failed to serve: {e}")),
+                            );
+                        }
                         KeyCode::Enter if app.write_mode => {
                             let text = app.write_input.clone();
                             if !text.trim().is_empty() {
@@ -135,6 +182,7 @@ struct App {
     write_mode: bool,
     write_input: String,
     write_status: String,
+    serve_status: Option<String>,
 }
 
 const TABS: [&str; 3] = ["Dashboard", "Inbox", "Clipboard"];
@@ -148,6 +196,7 @@ impl App {
             write_mode: false,
             write_input: String::new(),
             write_status: String::new(),
+            serve_status: None,
         }
     }
 
@@ -176,6 +225,8 @@ impl App {
             "loading …".to_string()
         } else if self.write_mode {
             "WRITE MODE: type, Enter to write to the clipboard, w to cancel".to_string()
+        } else if let Some(serve) = &self.serve_status {
+            serve.clone()
         } else {
             format!("hyprshare TUI · {} ", TABS[self.tab])
         };
@@ -246,7 +297,7 @@ impl App {
         let keys = if self.write_mode {
             "Enter write · w cancel"
         } else {
-            "Tab/←→ switch · 1-3 pages · r refresh · w write clipboard · q quit"
+            "Tab/←→ switch · 1-3 pages · r refresh · w write clipboard · s serve inbox · q quit"
         };
         frame.render_widget(
             Paragraph::new(Line::from(Span::styled(keys, Style::new().fg(Color::DarkGray)))),

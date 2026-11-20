@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **TUI can now start an inbox receiver**: press `s` on the Inbox page to
+  spawn a background `inbox serve` with a fresh token. The status bar shows
+  the port and token for the sender. The receive dir is created under
+  `~/Downloads/hyprshare-tui` to avoid the CLI default's missing-directory
+  failure.
 - **Serve a share session straight from the GUI**: the Devices page now has a
   Serve button on every session. It generates a fresh token, starts
   `hyprshare session serve` as a detached background process, and shows the
