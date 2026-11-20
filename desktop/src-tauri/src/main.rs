@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::PathBuf;
-use std::process::Command;
+use std::process::{Command, Stdio};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
 
@@ -67,6 +68,49 @@ fn upload_files(files: Vec<UploadFile>) -> Result<usize, String> {
 }
 
 #[derive(Serialize)]
+pub struct ServeSessionInfo {
+    token: String,
+    port: u16,
+    pid: u32,
+    address: String,
+}
+
+/// Start serving a staged share session in the background with a fresh token.
+/// `session serve` blocks while waiting for a receiver, so it must be spawned
+/// detached — otherwise the invoke call (and the UI) would hang forever.
+#[tauri::command]
+fn serve_session(session_id: String, port: u16) -> Result<ServeSessionInfo, String> {
+    if session_id.is_empty() {
+        return Err("no session selected".into());
+    }
+    // 32 hex chars from clock + pid: enough entropy for a short-lived token.
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .map_err(|e| e.to_string())?
+        .as_nanos();
+    let token = format!("{:016x}{:08x}{:08x}", nanos, std::process::id(), nanos >> 64);
+
+    let child = Command::new("hyprshare")
+        .args([
+            "session", "serve", &session_id,
+            "--port", &port.to_string(),
+            "--token", &token,
+        ])
+        .stdin(Stdio::null())
+        .stdout(Stdio::null())
+        .stderr(Stdio::null())
+        .spawn()
+        .map_err(|e| format!("failed to start session serve: {e}"))?;
+
+    Ok(ServeSessionInfo {
+        token,
+        port,
+        pid: child.id(),
+        address: format!("127.0.0.1:{port}"),
+    })
+}
+
+#[derive(Serialize)]
 struct AppInfo {
     version: String,
 }
@@ -81,7 +125,7 @@ fn app_info() -> AppInfo {
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
-        .invoke_handler(tauri::generate_handler![cli, upload_files, app_info])
+        .invoke_handler(tauri::generate_handler![cli, upload_files, app_info, serve_session])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Serve a share session straight from the GUI**: the Devices page now has a
+  Serve button on every session. It generates a fresh token, starts
+  `hyprshare session serve` as a detached background process, and shows the
+  exact `session fetch` command for the receiver — closing the loop from
+  staging to transfer without leaving the app.
+- **Native file and folder pickers** replace hand-typed paths for sharing,
+  invitation pairing, and the search directory.
+
 - **`share file` and `share folder` now stage a session by default**, so the
   transfer chain is one command away; the staged output prints the exact
   `session serve` follow-up. The manifest-only inspection moved to `--dry-run`

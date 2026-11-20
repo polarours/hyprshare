@@ -292,6 +292,22 @@ export async function runAction(args: string[]): Promise<string> {
   return result
 }
 
+export interface ServeSessionInfo {
+  token: string
+  port: number
+  pid: number
+  address: string
+}
+
+/** Start a background session server with a fresh token (desktop only). */
+export async function serveSession(sessionId: string, port: number): Promise<ServeSessionInfo> {
+  if (!inTauri()) {
+    throw new Error('Serving a session requires the desktop app.')
+  }
+  const { invoke } = await import('@tauri-apps/api/core')
+  return invoke<ServeSessionInfo>('serve_session', { sessionId, port })
+}
+
 /**
  * Pick a file or folder path. In the desktop app this opens the native file
  * dialog; in the browser it falls back to a prompt so pages keep working.

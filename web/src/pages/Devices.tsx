@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { runJson, runAction, pickPath, desktopAvailable } from '../api'
+import { runJson, runAction, pickPath, serveSession, type ServeSessionInfo, desktopAvailable } from '../api'
 import { PageHeader, Group, Row, StatusBanner, EmptyState, ActionButton } from '../components/ui'
 
 interface SelfIdentity {
@@ -32,6 +32,22 @@ function Devices() {
   const [discovery, setDiscovery] = useState<Discovery | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [serving, setServing] = useState<ServeSessionInfo | null>(null)
+
+  const startServing = async (sessionId: string) => {
+    setError(null)
+    setMessage(null)
+    try {
+      // 29112 is the CLI default receiver port; choose a high ephemeral port
+      // per click to avoid colliding with an existing listener.
+      const port = 30000 + Math.floor(Math.random() * 20000)
+      const info = await serveSession(sessionId, port)
+      setServing(info)
+      setMessage(`Serving ${sessionId} on ${info.address}.`)
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    }
+  }
   const [invitePath, setInvitePath] = useState('')
   const [pairPath, setPairPath] = useState('')
 
@@ -163,16 +179,35 @@ function Devices() {
               sub={`${session.capability} · ${session.file_count} files · ${(session.total_bytes / 1024).toFixed(1)} KB`}
               value={<span className="mono">{session.session_id}</span>}
               right={
-                <ActionButton
-                  variant="secondary"
-                  icon="trash"
-                  onClick={() => act(['session', 'delete', session.session_id], 'Session deleted')}
-                >
-                  Delete
-                </ActionButton>
+                <span style={{ display: 'inline-flex', gap: 8 }}>
+                  <ActionButton
+                    variant="secondary"
+                    icon="play"
+                    onClick={() => startServing(session.session_id)}
+                  >
+                    Serve
+                  </ActionButton>
+                  <ActionButton
+                    variant="secondary"
+                    icon="trash"
+                    onClick={() => act(['session', 'delete', session.session_id], 'Session deleted')}
+                  >
+                    Delete
+                  </ActionButton>
+                </span>
               }
             />
           ))
+        )}
+        {serving && (
+          <div className="row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
+            <div className="row-title">Serving on {serving.address}</div>
+            <div className="row-sub">Give the receiver this command:</div>
+            <code style={{ userSelect: 'all', padding: 10 }}>
+              hyprshare session fetch {serving.address} --token {serving.token} --to ~/Downloads
+            </code>
+            <div className="row-sub">Token: <span className="mono">{serving.token}</span></div>
+          </div>
         )}
       </Group>
 
