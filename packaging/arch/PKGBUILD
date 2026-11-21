@@ -1,6 +1,6 @@
-# Maintainer: polarours <polarours@outlook.com>
+# Maintainer: polarours <polarours@zohomail.com>
 pkgname=hyprshare
-pkgver=0.6.1
+pkgver=0.1.0
 pkgrel=1
 pkgdesc="Linux-native sharing platform for Hyprland and Wayland (CLI, TUI, desktop GUI and web UI)"
 arch=('x86_64')
