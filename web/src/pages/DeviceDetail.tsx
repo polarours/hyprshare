@@ -145,7 +145,7 @@ function DeviceDetail() {
                 icon="grid"
                 title={`hyprshare ${status.version}`}
                 sub={`${status.catalogs.backends} backends · ${status.catalogs.adapters} adapters`}
-                right={<span className="badge good"><span className="dot pass" />Active</span>}
+                right={<span className="badge good"><span className="dot pass" />CLI online</span>}
               />
             )}
           </Group>

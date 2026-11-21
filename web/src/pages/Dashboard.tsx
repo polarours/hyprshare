@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { api, type Health, type Peer, type Status } from '../api'
+import { api, runJson, type Health, type Peer, type Status } from '../api'
 import { Icon } from '../components/Icon'
 
 function Dashboard() {
   const [status, setStatus] = useState<Status | null>(null)
   const [health, setHealth] = useState<Health | null>(null)
   const [peers, setPeers] = useState<Peer[]>([])
+  const [daemonOnline, setDaemonOnline] = useState<boolean | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -27,6 +28,12 @@ function Dashboard() {
         setHealth(healthResult)
         setPeers(peerResult.peers)
         setError(null)
+        try {
+          await runJson(['daemon', 'status', '--json'], 0)
+          if (!cancelled) setDaemonOnline(true)
+        } catch {
+          if (!cancelled) setDaemonOnline(false)
+        }
       } catch (cause) {
         if (!cancelled) {
           setError(cause instanceof Error ? cause.message : String(cause))
@@ -100,7 +107,13 @@ function Dashboard() {
                 <div className="row-title">{status.version ? `hyprshare ${status.version}` : 'hyprshare'}</div>
                 <div className="row-sub">{status.config_file}</div>
               </div>
-              <span className="badge good"><span className="dot pass" />Active</span>
+              {daemonOnline === true ? (
+                <span className="badge good"><span className="dot pass" />Active</span>
+              ) : daemonOnline === false ? (
+                <span className="badge"><span className="dot warn" />CLI only</span>
+              ) : (
+                <span className="badge"><span className="dot" />Checking…</span>
+              )}
               <span className="row-chevron"><Icon name="chevron" /></span>
             </div>
             <div className="row">
