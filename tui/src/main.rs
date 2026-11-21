@@ -102,6 +102,36 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         if event::poll(Duration::from_millis(100))? {
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
+                    // Confirmation mode takes priority over all other keys.
+                    if app.confirm_clear {
+                        match key.code {
+                            KeyCode::Char('y') | KeyCode::Char('Y') => {
+                                app.confirm_clear = false;
+                                app.notice = Some(match Command::new("hyprshare")
+                                    .args(["inbox", "history", "clear", "--json"])
+                                    .output()
+                                {
+                                    Ok(out) if out.status.success() => {
+                                        "Transfer history cleared".to_string()
+                                    }
+                                    Ok(out) => format!(
+                                        "failed: {}",
+                                        String::from_utf8_lossy(&out.stderr).trim()
+                                    ),
+                                    Err(e) => format!("failed: {e}"),
+                                });
+                                app.refreshing = true;
+                                app.model = None;
+                                spawn_load(sender.clone());
+                                last_refresh = Instant::now();
+                            }
+                            KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => {
+                                app.confirm_clear = false;
+                            }
+                            _ => {}
+                        }
+                        continue;
+                    }
                     match key.code {
                         KeyCode::Char('q') => break,
                         KeyCode::Tab | KeyCode::Right => app.next_tab(),
@@ -121,6 +151,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 spawn_inbox_serve()
                                     .unwrap_or_else(|e| format!("failed to serve: {e}")),
                             );
+                        }
+                        KeyCode::Char('d') if !app.write_mode && app.tab == 1 => {
+                            app.confirm_clear = true;
                         }
                         KeyCode::Enter if app.write_mode => {
                             let text = app.write_input.clone();
@@ -183,6 +216,8 @@ struct App {
     write_input: String,
     write_status: String,
     serve_status: Option<String>,
+    confirm_clear: bool,
+    notice: Option<String>,
 }
 
 const TABS: [&str; 3] = ["Dashboard", "Inbox", "Clipboard"];
@@ -197,6 +232,8 @@ impl App {
             write_input: String::new(),
             write_status: String::new(),
             serve_status: None,
+            confirm_clear: false,
+            notice: None,
         }
     }
 
@@ -223,8 +260,12 @@ impl App {
         // Status line: what the TUI is doing right now.
         let status_text = if self.refreshing {
             "loading …".to_string()
+        } else if self.confirm_clear {
+            "Clear all transfer history? y = confirm · n / Esc = cancel".to_string()
         } else if self.write_mode {
             "WRITE MODE: type, Enter to write to the clipboard, w to cancel".to_string()
+        } else if let Some(notice) = &self.notice {
+            notice.clone()
         } else if let Some(serve) = &self.serve_status {
             serve.clone()
         } else {
@@ -297,7 +338,7 @@ impl App {
         let keys = if self.write_mode {
             "Enter write · w cancel"
         } else {
-            "Tab/←→ switch · 1-3 pages · r refresh · w write clipboard · s serve inbox · q quit"
+            "Tab/←→ switch · 1-3 pages · r refresh · w write clipboard · s serve inbox · d clear history · q quit"
         };
         frame.render_widget(
             Paragraph::new(Line::from(Span::styled(keys, Style::new().fg(Color::DarkGray)))),

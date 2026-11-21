@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **TUI can clear transfer history**: press `d` on the Inbox page, then `y`
+  to confirm (or `n` / Esc to cancel). The list reloads automatically after
+  clearing.
 - **TUI can now start an inbox receiver**: press `s` on the Inbox page to
   spawn a background `inbox serve` with a fresh token. The status bar shows
   the port and token for the sender. The receive dir is created under
