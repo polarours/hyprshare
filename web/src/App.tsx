@@ -4,6 +4,7 @@ import FileTransfer from './pages/FileTransfer'
 import ClipboardPage from './pages/Clipboard'
 import Devices from './pages/Devices'
 import Sessions from './pages/Sessions'
+import Operations from './pages/Operations'
 import Tools from './pages/Tools'
 import DeviceDetail from './pages/DeviceDetail'
 import SettingsPage from './pages/Settings'
@@ -95,6 +96,9 @@ function Shell() {
             <NavLink to="/sessions" className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}>
               <Icon name="share" /><span>Sessions</span>
             </NavLink>
+            <NavLink to="/operations" className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}>
+              <Icon name="shield" /><span>Operations</span>
+            </NavLink>
             <NavLink to="/tools" className={({ isActive }) => 'nav-item' + (isActive ? ' active' : '')}>
               <Icon name="tools" /><span>Tools</span>
             </NavLink>
@@ -115,6 +119,7 @@ function Shell() {
               <Route path="/clipboard" element={<ClipboardPage />} />
               <Route path="/devices" element={<Devices />} />
               <Route path="/sessions" element={<Sessions />} />
+              <Route path="/operations" element={<Operations />} />
               <Route path="/tools" element={<Tools />} />
               <Route path="/this-device" element={<DeviceDetail />} />
               <Route path="/settings" element={<SettingsPage />} />

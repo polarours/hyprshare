@@ -18,6 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (Esc exits), Unicode history is truncated by chars (no byte-slice panic),
   and failed CLI loads surface an error in the status bar instead of silently
   showing zeros.
+- **New Operations page in the GUI** exposes audit, backups, profiles, plugins,
+  recording and update checks — command groups that previously had no front-end
+  entry point. All actions go through the CLI.
 - **Fixed backend modules that faked results**: `batch` runs real commands;
   `audit` performs real permission/network/service checks; `backup` reads real
   manifest metadata; `sync` auto-syncs changed files; `cloud` reports transfer
