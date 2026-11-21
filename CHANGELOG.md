@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Share the clipboard from the GUI**: the File Transfer page gained a
+  Clipboard button alongside File/Folder, staging the current clipboard text
+  as a session. Also corrected stale "Devices page" wording to "Sessions".
 - **New dedicated Sessions page in the GUI**: staged shares now have their
   own sidebar page (Serve / Details / Delete, payload verification via
   `session verify`, and Clear all). This was previously buried in the Devices

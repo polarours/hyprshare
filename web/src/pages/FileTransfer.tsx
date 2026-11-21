@@ -83,6 +83,17 @@ function FileTransfer() {
     }
   }
 
+  const shareClipboard = async () => {
+    setError(null)
+    setShareResult(null)
+    try {
+      const result = await runAction(['share', 'clipboard', '--json'])
+      setShareResult(result.trim())
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    }
+  }
+
   const sharePath = async (folder: boolean) => {
     const path = await pickPath(folder ? 'folder' : 'file')
     if (!path) return
@@ -171,17 +182,16 @@ function FileTransfer() {
         </Group>
       )}
 
-      <Group title="Share a local file or folder">
+      <Group title="Share a file, folder, or clipboard">
         <Row
           icon="share"
-          title="Share a path"
-          sub="Stages a share session for a file or folder — serve it from the Devices page."
+          title="Stage a share session"
+          sub="Share a path or your current clipboard text — serve it from the Sessions page."
           right={
-            <span>
+            <span style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap' }}>
               <ActionButton variant="secondary" icon="file" onClick={() => sharePath(false)}>File</ActionButton>
-              <span style={{ marginLeft: 8 }}>
-                <ActionButton variant="secondary" icon="folder" onClick={() => sharePath(true)}>Folder</ActionButton>
-              </span>
+              <ActionButton variant="secondary" icon="folder" onClick={() => sharePath(true)}>Folder</ActionButton>
+              <ActionButton variant="secondary" icon="clipboard" onClick={shareClipboard}>Clipboard</ActionButton>
             </span>
           }
         />
