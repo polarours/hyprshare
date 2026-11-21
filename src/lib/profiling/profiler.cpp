@@ -33,10 +33,15 @@ void Profiler::add_bytes(const std::string& name, const std::uint64_t bytes) {
   for (auto& entry : entries_) {
     if (entry.name == name && entry.end_time == 0) {
       entry.bytes_processed += bytes;
-      if (entry.duration_us > 0) {
-        entry.throughput_mbps = static_cast<double>(entry.bytes_processed) /
-          (static_cast<double>(entry.duration_us) * 1024.0 * 1024.0);
-      }
+      // A running entry has no duration_us yet; measure elapsed time so the
+      // throughput is live instead of staying at zero until stop().
+      const auto now = std::chrono::duration_cast<std::chrono::microseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count();
+      const auto elapsed_us = entry.duration_us > 0
+        ? entry.duration_us
+        : std::max<std::int64_t>(1, now - entry.start_time);
+      entry.throughput_mbps = static_cast<double>(entry.bytes_processed) /
+        (static_cast<double>(elapsed_us) * 1024.0 * 1024.0);
       break;
     }
   }

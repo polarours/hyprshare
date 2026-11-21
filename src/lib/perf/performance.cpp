@@ -1,5 +1,6 @@
 #include "hyprshare/perf/performance.hpp"
 
+#include <algorithm>
 #include <chrono>
 #include <thread>
 
@@ -127,11 +128,19 @@ bool RateLimiter::try_acquire(const std::uint64_t bytes) {
   const auto now = std::chrono::duration_cast<std::chrono::milliseconds>(
     std::chrono::steady_clock::now().time_since_epoch()).count();
 
-  if (now - last_refill_ > 1000) {
-    tokens_ = rate_;
+  // Refill proportionally to elapsed time, capped at one second's worth.
+  // A single coarse reset made short waits bursty and lost fractional credit.
+  if (now > last_refill_ && rate_ > 0) {
+    const auto elapsed_ms = static_cast<std::uint64_t>(now - last_refill_);
+    const auto replenished = static_cast<std::uint64_t>(
+      static_cast<double>(rate_) * elapsed_ms / 1000.0);
+    tokens_ = std::min(rate_, tokens_ + replenished);
     last_refill_ = now;
   }
 
+  if (bytes == 0) {
+    return true;
+  }
   if (tokens_ >= bytes) {
     tokens_ -= bytes;
     return true;
@@ -140,8 +149,18 @@ bool RateLimiter::try_acquire(const std::uint64_t bytes) {
 }
 
 void RateLimiter::wait(const std::uint64_t bytes) {
-  while (!try_acquire(bytes)) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  if (bytes == 0) {
+    return;
+  }
+  // A request larger than the whole bucket can never succeed as one acquire:
+  // stream it in rate_-sized chunks instead of spinning forever.
+  std::uint64_t remaining = bytes;
+  while (remaining > 0) {
+    const auto chunk = std::min(remaining, rate_ == 0 ? remaining : rate_);
+    while (!try_acquire(chunk)) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    remaining -= chunk;
   }
 }
 
