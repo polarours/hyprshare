@@ -236,12 +236,20 @@ std::expected<void, std::string> CloudSyncClient::upload(
   const std::filesystem::path& local_path, const std::string& remote_path) {
   std::error_code ec;
   if (!std::filesystem::exists(local_path, ec)) {
+    set_status(SyncStatus::Error, local_path.string());
     return std::unexpected("source not found: " + local_path.string());
   }
-  if (config_.type == kHttpProvider) {
-    return upload_http(local_path, remote_path);
+  const auto total = std::filesystem::file_size(local_path, ec);
+  set_status(SyncStatus::Uploading, local_path.string(), 0, total);
+  auto result = config_.type == kHttpProvider
+    ? upload_http(local_path, remote_path)
+    : upload_local(local_path, remote_path);
+  if (!result.has_value()) {
+    set_status(SyncStatus::Error, local_path.string());
+    return result;
   }
-  return upload_local(local_path, remote_path);
+  set_status(SyncStatus::Idle, local_path.string(), total, total);
+  return {};
 }
 
 std::expected<void, std::string> CloudSyncClient::download_local(
@@ -305,10 +313,19 @@ std::expected<void, std::string> CloudSyncClient::download_http(
 
 std::expected<void, std::string> CloudSyncClient::download(
   const std::string& remote_path, const std::filesystem::path& local_path) {
-  if (config_.type == kHttpProvider) {
-    return download_http(remote_path, local_path);
+  set_status(SyncStatus::Downloading, remote_path);
+  auto result = config_.type == kHttpProvider
+    ? download_http(remote_path, local_path)
+    : download_local(remote_path, local_path);
+  if (!result.has_value()) {
+    set_status(SyncStatus::Error, remote_path);
+    return result;
   }
-  return download_local(remote_path, local_path);
+  std::error_code ec;
+  const auto total = std::filesystem::exists(local_path, ec)
+    ? std::filesystem::file_size(local_path, ec) : 0;
+  set_status(SyncStatus::Idle, remote_path, total, total);
+  return {};
 }
 
 std::expected<void, std::string> CloudSyncClient::sync_directory(
@@ -319,6 +336,7 @@ std::expected<void, std::string> CloudSyncClient::sync_directory(
   }
 
   std::size_t transferred = 0;
+  set_status(SyncStatus::Syncing, local_dir.string());
   for (const auto& entry : std::filesystem::recursive_directory_iterator(local_dir, ec)) {
     if (!entry.is_regular_file()) {
       continue;
@@ -336,8 +354,10 @@ std::expected<void, std::string> CloudSyncClient::sync_directory(
   }
 
   if (transferred == 0) {
+    set_status(SyncStatus::Error, local_dir.string());
     return std::unexpected("no files were found in " + local_dir.string());
   }
+  set_status(SyncStatus::Idle, local_dir.string(), transferred, transferred);
   return {};
 }
 
@@ -381,6 +401,20 @@ std::expected<std::vector<std::string>, std::string> CloudSyncClient::list_files
   }
   std::sort(files.begin(), files.end());
   return files;
+}
+
+void CloudSyncClient::set_status(SyncStatus status, const std::string& file_path,
+  std::uint64_t bytes, std::uint64_t total) {
+  status_ = status;
+  if (callback_) {
+    SyncProgress progress;
+    progress.file_path = file_path;
+    progress.bytes_transferred = bytes;
+    progress.total_bytes = total;
+    progress.percentage = total > 0 ? 100.0 * static_cast<double>(bytes) / total : 0.0;
+    progress.status = status;
+    callback_(progress);
+  }
 }
 
 void CloudSyncClient::set_sync_callback(SyncCallback callback) {

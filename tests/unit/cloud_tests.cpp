@@ -3,6 +3,7 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <atomic>
 #include <cstdlib>
 #include <filesystem>
@@ -199,9 +200,19 @@ int main() {
       out << "cloud payload";
     }
 
+    std::vector<hyprshare::cloud::SyncStatus> observed_statuses;
+    client.set_sync_callback([&](const hyprshare::cloud::SyncProgress& progress) {
+      observed_statuses.push_back(progress.status);
+    });
+
     const auto uploaded = client.upload(source, "docs/upload.txt");
     expect(uploaded.has_value(),
       "the upload should succeed: " + (uploaded.has_value() ? "" : uploaded.error()));
+    expect(std::find(observed_statuses.begin(), observed_statuses.end(),
+             hyprshare::cloud::SyncStatus::Uploading) != observed_statuses.end(),
+      "an upload should report the Uploading status through the callback");
+    expect(client.status() == hyprshare::cloud::SyncStatus::Idle,
+      "the client should return to Idle after a successful upload");
     expect(store.object_count() == 1, "the server should have received the object");
     expect(store.last_authorization().find("Bearer token-123") != std::string::npos,
       "the access key should be sent as a bearer token");

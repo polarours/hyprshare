@@ -84,6 +84,8 @@ class CloudSyncClient {
   CloudConfig config() const;
 
  private:
+  void set_status(SyncStatus status, const std::string& file_path = "",
+    std::uint64_t bytes = 0, std::uint64_t total = 0);
   std::expected<void, std::string> upload_local(const std::filesystem::path& local_path, const std::string& remote_path);
   std::expected<void, std::string> upload_http(const std::filesystem::path& local_path, const std::string& remote_path);
   std::expected<void, std::string> download_local(const std::string& remote_path, const std::filesystem::path& local_path);
