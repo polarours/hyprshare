@@ -16,18 +16,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ninja-build libssl-dev libsdbus-c++-dev libpipewire-0.3-dev
 
-      - name: Configure
+      - name: Configure, build, test
         run: |
-          cmake -S . -B build -G Ninja \
-            -DCMAKE_C_COMPILER=gcc-14 \
-            -DCMAKE_CXX_COMPILER=g++-14 \
-            -DCMAKE_BUILD_TYPE=Debug
-
-      - name: Build
-        run: cmake --build build
-
-      - name: Test
-        run: ctest --test-dir build --output-on-failure
+          cmake --preset debug
+          cmake --build --preset debug
+          ctest --preset debug --output-on-failure
 
   lint:
     runs-on: ubuntu-latest
@@ -70,16 +63,16 @@ jobs:
 
       - name: Build
         run: |
-          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
-          cmake --build build
+          cmake --preset release
+          cmake --build --preset release
 
       - name: Create package
         run: |
-          cd build
+          cd build-release
           cpack -G DEB
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: hyprshare-package
-          path: build/*.deb
+          path: build-release/*.deb
