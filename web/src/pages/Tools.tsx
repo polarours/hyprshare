@@ -10,8 +10,16 @@ interface Snapshot {
   network_recv: number
   connections: number
 }
-interface NetInterface { name: string; address: string; up: boolean }
+interface NetInterface {
+  name: string
+  address: string
+  netmask: string
+  gateway: string
+  is_loopback: boolean
+  is_up: boolean
+}
 interface SearchResult { name: string; path: string; is_dir: boolean; size: number }
+interface SearchResponse { results: SearchResult[]; count?: number }
 interface Backup { backup_id: string; created_at?: number; description?: string }
 
 function Tools() {
@@ -41,10 +49,10 @@ function Tools() {
     setError(null)
     setResults(null)
     try {
-      const data = await runJson<SearchResult[]>([
-        'search', 'files', '--path', searchPath, '--pattern', searchPattern
+      const data = await runJson<SearchResponse>([
+        'search', 'files', '--path', searchPath, '--pattern', searchPattern, '--json'
       ])
-      setResults(data)
+      setResults(data.results ?? [])
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
     }
@@ -152,7 +160,9 @@ function Tools() {
       <Group title="Network">
         {interfaces.length > 0 && (
           <div className="hint-text mono" style={{ maxHeight: 160, overflow: 'auto' }}>
-            {interfaces.map(i => `${i.name.trim()} ${i.up ? 'up' : 'down'} ${i.address}`).join('\n')}
+            {interfaces.map(i =>
+              `${i.name.trim()} ${i.is_up ? 'up' : 'down'} ${i.address}${i.netmask ? '/' + i.netmask : ''}${i.gateway ? ' gw ' + i.gateway : ''}`
+            ).join('\n')}
           </div>
         )}
         <div className="row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>

@@ -46,7 +46,21 @@ function Clipboard() {
     }
   }
 
-  const readClipboard = () => act(['clipboard', 'read', '--json'], 'Read clipboard')
+  const readClipboard = async () => {
+    setError(null)
+    setMessage(null)
+    try {
+      const data = await runJson<{ text?: string }>(['clipboard', 'read', '--json'], 0)
+      if (typeof data.text === 'string') {
+        setContent(data.text)
+        setMessage('Read clipboard into the editor.')
+      } else {
+        setError('The clipboard read result had no text field.')
+      }
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
+    }
+  }
   const writeClipboard = () => {
     if (!content.trim()) {
       setError('Enter some text to write.')
@@ -103,7 +117,14 @@ function Clipboard() {
               variant="secondary"
               icon="send"
               disabled={!pushTarget.trim() || !content.trim()}
-              onClick={() => act(['clipboard-sync', 'send', pushTarget.trim()], 'Pushed to peer')}
+              onClick={async () => {
+                try {
+                  await runAction(['clipboard-sync', 'push', content])
+                  await act(['clipboard-sync', 'send', pushTarget.trim()], 'Pushed to peer')
+                } catch (cause) {
+                  setError(cause instanceof Error ? cause.message : String(cause))
+                }
+              }}
             >
               Push to peer
             </ActionButton>

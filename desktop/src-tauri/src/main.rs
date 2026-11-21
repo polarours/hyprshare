@@ -78,6 +78,19 @@ pub struct ServeSessionInfo {
 /// Start serving a staged share session in the background with a fresh token.
 /// `session serve` blocks while waiting for a receiver, so it must be spawned
 /// detached — otherwise the invoke call (and the UI) would hang forever.
+// Find the local LAN address without sending packets (UDP connect only picks
+// a route; no data leaves the machine). Fall back to loopback if unavailable.
+fn local_lan_ip() -> String {
+    use std::net::UdpSocket;
+    UdpSocket::bind("0.0.0.0:0")
+        .and_then(|socket| {
+            socket.connect("8.8.8.8:80")?;
+            socket.local_addr()
+        })
+        .map(|addr| addr.ip().to_string())
+        .unwrap_or_else(|_| "127.0.0.1".to_string())
+}
+
 #[tauri::command]
 fn serve_session(session_id: String, port: u16) -> Result<ServeSessionInfo, String> {
     if session_id.is_empty() {
@@ -93,6 +106,7 @@ fn serve_session(session_id: String, port: u16) -> Result<ServeSessionInfo, Stri
     let child = Command::new("hyprshare")
         .args([
             "session", "serve", &session_id,
+            "--host", "0.0.0.0",
             "--port", &port.to_string(),
             "--token", &token,
         ])
@@ -106,7 +120,7 @@ fn serve_session(session_id: String, port: u16) -> Result<ServeSessionInfo, Stri
         token,
         port,
         pid: child.id(),
-        address: format!("127.0.0.1:{port}"),
+        address: format!("{}:{}", local_lan_ip(), port),
     })
 }
 

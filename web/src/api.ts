@@ -43,6 +43,8 @@ export interface Backend {
   summary: string
   launch_supported: boolean
   optional: boolean
+  support_tier?: string
+  missing?: string[]
 }
 
 export interface Peer {
@@ -132,8 +134,12 @@ function shapeBackends(raw: unknown): { backends: Backend[] } {
     backends: list.map((b: AnyObj) => ({
       id: b.id ?? '',
       summary: b.summary ?? '',
-      launch_supported: b.launch_supported ?? false,
-      optional: b.optional ?? false
+      // The CLI reports `ready` plus `support_tier`/`missing`; older REST
+      // payloads used `launch_supported`/`optional`. Accept both.
+      launch_supported: b.ready ?? b.launch_supported ?? false,
+      optional: b.support_tier ? b.support_tier !== 'primary' : (b.optional ?? false),
+      support_tier: b.support_tier ?? '',
+      missing: Array.isArray(b.missing) ? b.missing : []
     }))
   }
 }

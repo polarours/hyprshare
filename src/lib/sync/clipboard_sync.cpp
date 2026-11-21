@@ -161,11 +161,12 @@ std::expected<void, std::string> ClipboardSyncService::push_to_peer(
   const std::uint16_t port,
   const std::string& device_id,
   const std::string& access_token) {
-  if (history_.empty()) {
-    return std::unexpected("there is nothing to send yet");
+  const auto entries = load_history();
+  if (entries.empty()) {
+    return std::unexpected("there is nothing to send yet — run 'clipboard-sync push <content>' first");
   }
 
-  const auto& entry = history_.back();
+  const auto& entry = entries.back();
   const auto scratch = paths_.state_dir / "clipboard-outbox";
   std::error_code error;
   std::filesystem::create_directories(scratch, error);
