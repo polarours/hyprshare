@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **New dedicated Sessions page in the GUI**: staged shares now have their
+  own sidebar page (Serve / Details / Delete, payload verification via
+  `session verify`, and Clear all). This was previously buried in the Devices
+  page.
 - **Fixed clipboard reads on Wayland**: `ProcessRunner::run_shell` was closing
   stdin in the spawned shell, which made wl-clipboard abort with "closed
   standard file descriptor" — `clipboard read` and `share clipboard` always

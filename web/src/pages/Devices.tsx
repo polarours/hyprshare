@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { runJson, runAction, pickPath, serveSession, type ServeSessionInfo, desktopAvailable } from '../api'
+import { runJson, runAction, pickPath, desktopAvailable } from '../api'
 import { PageHeader, Group, Row, StatusBanner, EmptyState, ActionButton } from '../components/ui'
 
 interface SelfIdentity {
@@ -12,13 +12,6 @@ interface Peer {
   device_label?: string
   label?: string
 }
-interface Session {
-  session_id: string
-  capability: string
-  share_name: string
-  file_count: number
-  total_bytes: number
-}
 interface Discovery {
   avahi_daemon_active: boolean
   ready_to_announce: boolean
@@ -28,40 +21,21 @@ interface Discovery {
 function Devices() {
   const [self, setSelf] = useState<SelfIdentity | null>(null)
   const [peers, setPeers] = useState<Peer[]>([])
-  const [sessions, setSessions] = useState<Session[]>([])
   const [discovery, setDiscovery] = useState<Discovery | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [serving, setServing] = useState<ServeSessionInfo | null>(null)
-
-  const startServing = async (sessionId: string) => {
-    setError(null)
-    setMessage(null)
-    try {
-      // 29112 is the CLI default receiver port; choose a high ephemeral port
-      // per click to avoid colliding with an existing listener.
-      const port = 30000 + Math.floor(Math.random() * 20000)
-      const info = await serveSession(sessionId, port)
-      setServing(info)
-      setMessage(`Serving ${sessionId} on ${info.address}.`)
-    } catch (cause) {
-      setError(cause instanceof Error ? cause.message : String(cause))
-    }
-  }
   const [invitePath, setInvitePath] = useState('')
   const [pairPath, setPairPath] = useState('')
 
   const load = async () => {
     try {
-      const [selfData, peerData, sessionData, discData] = await Promise.all([
+      const [selfData, peerData, discData] = await Promise.all([
         runJson<SelfIdentity>(['peer', 'self', '--json']),
         runJson<Peer[]>(['peer', 'list', '--json']),
-        runJson<Session[]>(['session', 'list', '--json']),
         runJson<Discovery>(['discovery', 'status', '--json'])
       ])
       setSelf(selfData)
       setPeers(peerData)
-      setSessions(sessionData)
       setDiscovery(discData)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
@@ -89,8 +63,8 @@ function Devices() {
     <>
       <PageHeader
         eyebrow="Devices"
-        title="Devices & Sessions"
-        subtitle="Your identity, trusted peers, active share sessions, and local discovery."
+        title="Devices"
+        subtitle="Your identity, trusted peers, and local discovery."
       />
 
       {!desktopAvailable() && (
@@ -165,50 +139,6 @@ function Devices() {
             </ActionButton>
           </div>
         </div>
-      </Group>
-
-      <Group title={`Share sessions · ${sessions.length}`}>
-        {sessions.length === 0 ? (
-          <EmptyState icon="share" title="No active sessions" sub="Sessions you create for sharing will appear here." />
-        ) : (
-          sessions.slice(0, 12).map(session => (
-            <Row
-              key={session.session_id}
-              icon="share"
-              title={session.share_name}
-              sub={`${session.capability} · ${session.file_count} files · ${(session.total_bytes / 1024).toFixed(1)} KB`}
-              value={<span className="mono">{session.session_id}</span>}
-              right={
-                <span style={{ display: 'inline-flex', gap: 8 }}>
-                  <ActionButton
-                    variant="secondary"
-                    icon="play"
-                    onClick={() => startServing(session.session_id)}
-                  >
-                    Serve
-                  </ActionButton>
-                  <ActionButton
-                    variant="secondary"
-                    icon="trash"
-                    onClick={() => act(['session', 'delete', session.session_id], 'Session deleted')}
-                  >
-                    Delete
-                  </ActionButton>
-                </span>
-              }
-            />
-          ))
-        )}
-        {serving && (
-          <div className="row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 8 }}>
-            <div className="row-title">Serving on {serving.address}</div>
-            <div className="row-sub">Give the receiver this command:</div>
-            <code style={{ userSelect: 'all', padding: 10 }}>
-              hyprshare session fetch {serving.address} --token {serving.token} --to ~/Downloads
-            </code>
-            <div className="row-sub">Token: <span className="mono">{serving.token}</span></div>
-          </div>
-        )}
       </Group>
 
       <Group title="Local discovery">
