@@ -7,10 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- **Redesigned the README for discoverability**: centered hero with logo,
-  badges, dot-navigation, an authentic GUI screenshot, a "Why hyprshare"
-  section, feature/frontend tables, a Mermaid architecture diagram, and a
-  30-second quickstart.
+- **Redesigned the README in a community-showcase style** (Hyprland-like):
+  centered hero with logo/slogan/badges/dot-nav, a TLDR, feature cards, a
+  six-page real screenshot wall, a community section, and back-to-top. All
+  screenshots are captured from the actual running UI.
 - **Share the clipboard from the GUI**: the File Transfer page gained a
   Clipboard button alongside File/Folder, staging the current clipboard text
   as a session. Also corrected stale "Devices page" wording to "Sessions".

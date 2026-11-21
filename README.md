@@ -2,86 +2,147 @@
 
 <div align="center">
 
-<img src="desktop/src-tauri/icons/icon.svg" width="110" alt="hyprshare logo" />
+<img src="desktop/src-tauri/icons/icon.svg" width="120" alt="hyprshare logo" />
 
 # hyprshare
 
-**One install. Every way to share — CLI, terminal UI, desktop app, and web.**
+### Share anything, from the terminal to the desktop — without leaving Hyprland.
 
-A Linux-native sharing platform built for Hyprland and Wayland. Files,
-clipboard, screen capture, and trusted peers — all driven by one CLI-first
-core, with four frontends that can never disagree with each other.
-
-[![Stars](https://img.shields.io/github/stars/polarours/hyprshare?style=social)](https://github.com/polarours/hyprshare/stargazers)
-[![CI](https://github.com/polarours/hyprshare/actions/workflows/ci.yml/badge.svg)](https://github.com/polarours/hyprshare/actions/workflows/ci.yml)
-[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
-[![Platform: Linux](https://img.shields.io/badge/Platform-Linux%20%7C%20Wayland-blue)](docs/compatibility/matrix.md)
+[![stars](https://img.shields.io/github/stars/polarours/hyprshare?style=social)](https://github.com/polarours/hyprshare/stargazers)
+[![license](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
+[![linux](https://img.shields.io/badge/platform-Linux%20%7C%20Wayland-blue)](docs/compatibility/matrix.md)
 [![C++23](https://img.shields.io/badge/C%2B%2B-23-orange)](CMakeLists.txt)
 
-[Install](#install) • [Why hyprshare](#why-hyprshare) • [Features](#features) • [Frontends](#frontends) • [Quick start](#quick-start) • [Docs](#documentation)
-
-</div>
-
-![hyprshare desktop GUI — dashboard with device identity and system health](docs/assets/gui-dashboard.png)
+**[Install](#install)** &nbsp;·&nbsp; **[Features](#features)** &nbsp;·&nbsp; **[Screenshots](#screenshots)** &nbsp;·&nbsp; **[Quick start](#quick-start)** &nbsp;·&nbsp; **[Docs](#documentation)**
 
 <br />
 
-## Why hyprshare
+![hyprshare desktop GUI](docs/assets/gui-dashboard-web.png)
 
-Sharing between your Linux machines usually means stitching together `scp`,
-a clipboard tool, a screenshot utility, and a hand-rolled HTTP server. Each
-has its own trust model and its own quirks — and none of them talk to each
-other.
+</div>
 
-hyprshare gives you one tool that covers the whole path:
+<br />
 
-- **One identity per device**, with offline invitations, pairing, and mDNS
-  discovery — no account, no cloud, no third-party relay.
-- **One transfer primitive** — a *session* — that every frontend stages,
-  serves, and fetches the same way.
-- **One install** on Arch Linux provides the CLI, daemon, TUI, desktop GUI,
-  and web UI. The frontends are thin subprocess callers of the CLI, so a
-  command behaves identically everywhere.
+## ✨ TLDR
 
-## Features
+> **hyprshare** is a Linux-native sharing platform for **Hyprland** and **Wayland**.
+> It unifies file transfer, clipboard exchange, screen capture, peer trust, and
+> system diagnostics behind a single CLI-first core. One install gives you four
+> front-ends over the same commands — the **CLI**, a **TUI**, a **desktop GUI**,
+> and a **web UI**.
 
-| | |
-|---|---|
-| 📦 **File & folder sharing** | Stage a session, serve it with a token and lifetime, fetch from the peer side. Checksums and payload verification built in. |
-| 📥 **HTTP inbox** | Receive uploads over LAN with token auth, extraction, size limits, and transfer history. |
-| 📋 **Clipboard** | Read/write plus cross-device sync with persistent history. |
-| 🖥️ **Screen capture & recording** | xdg-desktop-portal + PipeWire, OBS fallback, MP4/WebM/MKV encoding via ffmpeg. |
-| 🔐 **TLS/mTLS transport** | OpenSSL with self-signed X.509 v3 certificates. |
-| 🤝 **Peer trust** | Per-device identity, offline invitations, pairing, Avahi discovery. |
-| 🧩 **34 CLI commands** | sync, cloud, backup, search, monitor, netdiag, tls, plugin, batch, daemon, update, profile, and more. |
-| 🔌 **Plugin system** | Shared objects contribute new CLI commands at runtime. |
+- 🚀 **Actively developed** — C++23 core, strict warnings, 13 test suites
+- 🖥️ **Four front-ends, one brain** — every frontend calls the same CLI
+- 🔐 **No cloud, no account** — device identity, offline pairing, TLS/mTLS
+- 🧩 **Extensible** — shared-object plugins add CLI commands at runtime
+
+## 🔓 Unlock the full power
+
+<h3 align="center">Share a file in one command. Serve it with a token. Done.</h3>
+
+```bash
+hyprshare share file photo.jpg                    # stage a session
+hyprshare session serve <id> --generate-token     # serve it to your LAN
+hyprshare session fetch <host:port> --token <t> --to ~/recv   # receive on the peer
+```
+
+No account, no relay, no copy-pasting IPs into a browser. Sessions carry their
+own checksums and can be verified on the receiving side.
+
+## 🎯 Features
+
+<table>
+  <tr>
+    <td width="50%" valign="top">
+      <b>📦 File & folder sharing</b><br/>
+      Stage a session, serve it with a token and lifetime, fetch from the peer.
+      Checksums and payload verification built in.
+    </td>
+    <td width="50%" valign="top">
+      <b>📥 HTTP inbox</b><br/>
+      Receive uploads over LAN with token auth, extraction, size limits, and a
+      persistent transfer history.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <b>📋 Clipboard</b><br/>
+      Read/write and cross-device sync with persistent history — share the
+      current clipboard as a session in one click.
+    </td>
+    <td width="50%" valign="top">
+      <b>🖥️ Screen capture & recording</b><br/>
+      xdg-desktop-portal + PipeWire, OBS fallback, MP4/WebM/MKV via ffmpeg.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <b>🔐 TLS/mTLS transport</b><br/>
+      OpenSSL with self-signed X.509 v3 certificates.
+    </td>
+    <td width="50%" valign="top">
+      <b>🤝 Peer trust & discovery</b><br/>
+      Per-device identity, offline invitations, pairing, mDNS/Avahi discovery.
+    </td>
+  </tr>
+  <tr>
+    <td width="50%" valign="top">
+      <b>⌨️ 34 CLI commands</b><br/>
+      sync, cloud, backup, search, monitor, netdiag, tls, plugin, batch,
+      daemon, update, profile, and more.
+    </td>
+    <td width="50%" valign="top">
+      <b>🔌 Plugin system</b><br/>
+      Shared objects contribute new CLI commands at runtime.
+    </td>
+  </tr>
+</table>
 
 See the [implementation status table](docs/architecture/overview.md) for what
 is complete and what is planned.
 
-## Frontends
+## 🖼️ Screenshots
 
-| Frontend | Launch | What it is |
+The same CLI behind every screen — so a command behaves identically everywhere.
+
+<table>
+  <tr>
+    <td width="33%" align="center"><b>Dashboard</b><br/><img src="docs/assets/gui-dashboard-web.png" alt="Dashboard" width="100%"/></td>
+    <td width="33%" align="center"><b>File Transfer</b><br/><img src="docs/assets/gui-transfer.png" alt="File Transfer" width="100%"/></td>
+    <td width="33%" align="center"><b>Sessions</b><br/><img src="docs/assets/gui-sessions.png" alt="Sessions" width="100%"/></td>
+  </tr>
+  <tr>
+    <td width="33%" align="center"><b>Clipboard</b><br/><img src="docs/assets/gui-clipboard.png" alt="Clipboard" width="100%"/></td>
+    <td width="33%" align="center"><b>Devices</b><br/><img src="docs/assets/gui-devices.png" alt="Devices" width="100%"/></td>
+    <td width="33%" align="center"><b>Settings</b><br/><img src="docs/assets/gui-settings.png" alt="Settings" width="100%"/></td>
+  </tr>
+</table>
+
+Light, dark, and follow-system themes are one click away in every page.
+
+## 🧩 Four front-ends, one brain
+
+| Front-end | Launch | What it is |
 |---|---|---|
 | **CLI** | `hyprshare --help` | 34 commands, the single source of truth |
 | **TUI** | `hyprshare-tui` | ratatui dashboard — device, inbox, clipboard, receiver control |
-| **Desktop** | `hyprshare-desktop` | Tauri window with seven pages and light/dark/system themes |
+| **Desktop** | `hyprshare-desktop` | Tauri window, seven pages, light/dark/system themes |
 | **Web** | `hyprshare web serve` | REST API + React frontend at `http://127.0.0.1:8080/` |
 
-Every frontend is a subprocess caller of the CLI.
+Every front-end is a subprocess caller of the CLI.
 
-## Install
+## 📦 Install
 
-Arch Linux (one AUR package provides everything):
+Arch Linux — one AUR package provides **everything** (CLI, daemon, TUI, desktop
+GUI, web UI):
 
 ```bash
 yay -S hyprshare
 ```
 
-See [packaging/arch/](packaging/arch/README.md) for details and manual
-installation.
+See [packaging/arch/](packaging/arch/README.md) for details and manual installation.
 
-## Quick start
+## 🚀 Quick start
 
 ```bash
 hyprshare doctor                                   # check your environment
@@ -91,7 +152,7 @@ hyprshare share file photo.jpg                     # machine A: stages a session
 hyprshare session serve <id> --generate-token      # machine A: serve it
 hyprshare session fetch <host:port> --token <t> --to ~/recv   # machine B
 
-# Receive files from another device
+# Receive files from a peer
 hyprshare inbox serve --generate-token             # this machine: listen
 hyprshare inbox put <host:8888> file.jpg --token <t>          # peer: send
 ```
@@ -99,7 +160,7 @@ hyprshare inbox put <host:8888> file.jpg --token <t>          # peer: send
 Add `--json` to any command for machine-readable output, and `--help` to any
 command for its full usage.
 
-## Architecture
+## 🏗️ Architecture
 
 ```mermaid
 flowchart LR
@@ -126,22 +187,16 @@ flowchart LR
 
 Decisions are recorded as [ADRs](docs/adr/README.md).
 
-## Build from source
+## 👥 Community
 
-Requirements: CMake ≥ 3.28, Ninja, a C++23 compiler, OpenSSL, sdbus-c++,
-PipeWire headers. The GUI additionally needs Rust and Node.js/npm.
+Built for the Hyprland community. Questions, ideas, and contributions are
+welcome — open an issue or a discussion on the
+[GitHub repository](https://github.com/polarours/hyprshare).
 
-```bash
-cmake -S . -B build -G Ninja && cmake --build build
-ctest --test-dir build --output-on-failure            # 13 test suites
+If hyprshare is useful to you, a ⭐ on the repo is the easiest way to support
+the project and help others find it.
 
-cargo build --release --manifest-path tui/Cargo.toml
-
-cd web && npm install && npm run build && cd ..
-cd desktop/src-tauri && cargo build --release
-```
-
-## Documentation
+## 📚 Documentation
 
 - [Architecture Overview](docs/architecture/overview.md)
 - [User Guide](docs/user-guide.md) · [API Reference](docs/api-reference.md)
@@ -150,12 +205,12 @@ cd desktop/src-tauri && cargo build --release
 - [Mobile Protocol](docs/protocol/mobile.md)
 - [Changelog](CHANGELOG.md)
 
-## License
+## 📄 License
 
 GPL-3.0-only — see [LICENSE](LICENSE).
 
-<div align="right">
+<div align="center">
 
-[Back to top](#readme-top)
+[⬆ Back to top](#readme-top)
 
 </div>
