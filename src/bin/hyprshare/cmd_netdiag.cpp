@@ -27,14 +27,22 @@ std::expected<int, std::string> handle_netdiag(CommandContext& ctx, std::vector<
       std::cout << "[";
       for (std::size_t i = 0; i < interfaces->size(); ++i) {
         if (i > 0) std::cout << ",";
-        std::cout << "{\"name\":\"" << (*interfaces)[i].name
-                  << "\",\"address\":\"" << (*interfaces)[i].address
-                  << "\",\"up\":" << ((*interfaces)[i].is_up ? "true" : "false") << "}";
+        const auto& iface = (*interfaces)[i];
+        std::cout << "{\"name\":\"" << iface.name
+                  << "\",\"address\":\"" << iface.address
+                  << "\",\"netmask\":\"" << iface.netmask
+                  << "\",\"gateway\":\"" << iface.gateway
+                  << "\",\"is_loopback\":" << (iface.is_loopback ? "true" : "false")
+                  << ",\"is_up\":" << (iface.is_up ? "true" : "false") << "}";
       }
       std::cout << "]\n";
     } else {
       for (const auto& iface : *interfaces) {
-        std::cout << iface.name << " - " << (iface.is_up ? "UP" : "DOWN") << "\n";
+        std::cout << iface.name << " - " << (iface.is_up ? "UP" : "DOWN")
+                  << " " << iface.address;
+        if (!iface.netmask.empty()) std::cout << "/" << iface.netmask;
+        if (!iface.gateway.empty()) std::cout << " gw " << iface.gateway;
+        std::cout << "\n";
       }
     }
     return 0;

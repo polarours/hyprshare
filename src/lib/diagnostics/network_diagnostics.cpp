@@ -1,6 +1,8 @@
 #include "hyprshare/diagnostics/network_diagnostics.hpp"
 
 #include <arpa/inet.h>
+#include <ifaddrs.h>
+#include <net/if.h>
 #include <netdb.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -8,6 +10,8 @@
 #include <chrono>
 #include <cstring>
 #include <fstream>
+#include <cstdint>
+#include <map>
 #include <iostream>
 #include <sstream>
 #include <thread>
@@ -54,22 +58,71 @@ std::expected<NetworkDiagnostics, std::string> NetworkDiagnosticsRunner::run_all
 std::expected<std::vector<NetworkInterface>, std::string> NetworkDiagnosticsRunner::list_interfaces() {
   std::vector<NetworkInterface> interfaces;
 
-  std::ifstream net_dev("/proc/net/dev");
-  if (!net_dev.is_open()) {
-    return std::unexpected("failed to open /proc/net/dev");
-  }
-
-  std::string line;
-  std::getline(net_dev, line); // skip header
-  std::getline(net_dev, line); // skip header
-
-  while (std::getline(net_dev, line)) {
-    auto iface = parse_interface(line);
-    if (iface.has_value()) {
-      interfaces.push_back(*iface);
+  // Default gateway from the kernel route table (destination 00000000).
+  std::string default_gateway;
+  std::ifstream route("/proc/net/route");
+  if (route) {
+    std::string line;
+    std::getline(route, line);  // header
+    while (std::getline(route, line)) {
+      std::istringstream fields(line);
+      std::string iface_name, destination, gateway;
+      fields >> iface_name >> destination >> gateway;
+      if (destination == "00000000" && gateway != "00000000") {
+        // The route file stores the address as little-endian hex.
+        std::uint32_t raw = 0;
+        try {
+          raw = static_cast<std::uint32_t>(std::stoul(gateway, nullptr, 16));
+        } catch (...) {
+          continue;
+        }
+        struct in_addr addr{};
+        addr.s_addr = raw;
+        char buffer[INET_ADDRSTRLEN] = {};
+        if (inet_ntop(AF_INET, &addr, buffer, sizeof(buffer))) {
+          default_gateway = buffer;
+        }
+        break;
+      }
     }
   }
 
+  struct ifaddrs* addresses = nullptr;
+  if (getifaddrs(&addresses) != 0) {
+    return std::unexpected("failed to enumerate network interfaces");
+  }
+
+  std::map<std::string, NetworkInterface> by_name;
+  for (auto* current = addresses; current != nullptr; current = current->ifa_next) {
+    if (current->ifa_addr == nullptr) continue;
+    const std::string name = current->ifa_name;
+    auto& iface = by_name[name];
+    if (iface.name.empty()) {
+      iface.name = name;
+      iface.is_loopback = (current->ifa_flags & IFF_LOOPBACK) != 0;
+      iface.is_up = (current->ifa_flags & IFF_UP) != 0;
+      iface.gateway = iface.is_loopback ? "" : default_gateway;
+    }
+    if (current->ifa_addr->sa_family == AF_INET) {
+      const auto* ipv4 = reinterpret_cast<const sockaddr_in*>(current->ifa_addr);
+      char buffer[INET_ADDRSTRLEN] = {};
+      if (inet_ntop(AF_INET, &ipv4->sin_addr, buffer, sizeof(buffer))) {
+        iface.address = buffer;
+      }
+      if (current->ifa_netmask != nullptr) {
+        const auto* mask = reinterpret_cast<const sockaddr_in*>(current->ifa_netmask);
+        char mask_buffer[INET_ADDRSTRLEN] = {};
+        if (inet_ntop(AF_INET, &mask->sin_addr, mask_buffer, sizeof(mask_buffer))) {
+          iface.netmask = mask_buffer;
+        }
+      }
+    }
+  }
+  freeifaddrs(addresses);
+
+  for (auto& [name, iface] : by_name) {
+    interfaces.push_back(std::move(iface));
+  }
   return interfaces;
 }
 
