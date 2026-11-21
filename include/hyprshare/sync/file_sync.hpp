@@ -6,6 +6,7 @@
 #include <filesystem>
 #include <functional>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -85,6 +86,7 @@ class FileSyncService {
 
  private:
   void watch_loop();
+  bool is_paused(const std::string& rule_id) const;
   // Transfers the files of a rule to the peer and records the result.
   SyncReport sync_rule(const SyncRule& rule);
   // The files of the rule, relative to the local path.
@@ -98,6 +100,8 @@ class FileSyncService {
 
   // The state of every watched file, so that only real changes are sent.
   std::map<std::string, std::pair<std::int64_t, std::uintmax_t>> watched_;
+  // Rules whose automatic syncing is paused, by id.
+  std::set<std::string> paused_rules_;
   platform::ProcessRunner runner_;
   tls::TlsTransportConfig tls_config_;
 };

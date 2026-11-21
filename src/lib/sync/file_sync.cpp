@@ -1,7 +1,6 @@
 #include "hyprshare/sync/file_sync.hpp"
 
 #include <chrono>
-#include <iostream>
 #include <thread>
 
 #include "hyprshare/core/inbox.hpp"
@@ -99,14 +98,34 @@ std::expected<SyncReport, std::string> FileSyncService::sync_now(const std::stri
   return std::unexpected("rule not found: " + rule_id);
 }
 
-std::expected<void, std::string> FileSyncService::pause(const std::string&) {
+std::expected<void, std::string> FileSyncService::pause(const std::string& rule_id) {
+  bool found = false;
+  for (const auto& rule : rules_) {
+    if (rule.id == rule_id) {
+      found = true;
+      break;
+    }
+  }
+  if (!found) {
+    return std::unexpected("rule not found: " + rule_id);
+  }
+  paused_rules_.insert(rule_id);
   status_ = SyncStatus::Paused;
   return {};
 }
 
-std::expected<void, std::string> FileSyncService::resume(const std::string&) {
-  status_ = SyncStatus::Idle;
+std::expected<void, std::string> FileSyncService::resume(const std::string& rule_id) {
+  if (paused_rules_.erase(rule_id) == 0) {
+    return std::unexpected("rule was not paused: " + rule_id);
+  }
+  if (paused_rules_.empty()) {
+    status_ = SyncStatus::Idle;
+  }
   return {};
+}
+
+bool FileSyncService::is_paused(const std::string& rule_id) const {
+  return paused_rules_.count(rule_id) > 0;
 }
 
 void FileSyncService::set_sync_callback(SyncCallback callback) {
@@ -249,38 +268,69 @@ SyncReport FileSyncService::sync_rule(const SyncRule& rule) {
 
 void FileSyncService::watch_loop() {
   while (running_) {
-    if (status_ != SyncStatus::Paused) {
-      for (const auto& rule : rules_) {
-        if (!rule.enabled) {
+    for (const auto& rule : rules_) {
+      if (!rule.enabled || is_paused(rule.id)) {
+        continue;
+      }
+
+      // Only local->remote directions push on local file changes. Pull-only
+      // rules are handled by an explicit sync_now, never by this loop: pushing
+      // them here would make downloaded files trigger a send-back loop.
+      const bool push = rule.direction == SyncDirection::LocalToRemote ||
+                        rule.direction == SyncDirection::Bidirectional;
+      if (!push) {
+        continue;
+      }
+
+      std::error_code error;
+      if (!std::filesystem::exists(rule.local_path, error)) {
+        continue;
+      }
+
+      const auto address = parse_address(rule.remote_address);
+      if (!address.has_value()) {
+        continue;
+      }
+
+      for (const auto& file : collect_files(rule)) {
+        const auto modified = std::filesystem::last_write_time(file, error).time_since_epoch().count();
+        const auto size = std::filesystem::file_size(file, error);
+
+        const std::string key = rule.id + "\n" + file.string();
+        const auto previous = watched_.find(key);
+        if (previous != watched_.end() && previous->second.first == modified &&
+            previous->second.second == size) {
           continue;
         }
+        watched_[key] = {modified, size};
 
-        std::error_code error;
-        if (!std::filesystem::exists(rule.local_path, error)) {
-          continue;
+        SyncEvent event;
+        event.rule_id = rule.id;
+        event.path = file;
+        event.event_type = "modified";
+        event.timestamp = std::chrono::duration_cast<std::chrono::seconds>(
+          std::chrono::system_clock::now().time_since_epoch()).count();
+        events_.push_back(event);
+        if (callback_) {
+          callback_(event);
         }
 
-        for (const auto& file : collect_files(rule)) {
-          const auto modified = std::filesystem::last_write_time(file, error).time_since_epoch().count();
-          const auto size = std::filesystem::file_size(file, error);
-
-          const std::string key = rule.id + "\n" + file.string();
-          const auto previous = watched_.find(key);
-          if (previous != watched_.end() && previous->second.first == modified &&
-              previous->second.second == size) {
-            continue;
-          }
-          watched_[key] = {modified, size};
-
-          SyncEvent event;
-          event.rule_id = rule.id;
-          event.path = file;
-          event.event_type = "modified";
-          event.timestamp = std::chrono::duration_cast<std::chrono::seconds>(
-            std::chrono::system_clock::now().time_since_epoch()).count();
-          events_.push_back(event);
+        // Actually transfer the changed file to the peer's inbox.
+        std::error_code rel_error;
+        auto relative = std::filesystem::relative(file, rule.local_path, rel_error);
+        const std::string remote_name = rel_error ? file.filename().string() : relative.string();
+        const auto sent = core::put_inbox_file(
+          address->first, address->second, file, remote_name, rule.remote_token,
+          &runner_, tls_config_);
+        if (sent.has_value()) {
+          SyncEvent sent_event;
+          sent_event.rule_id = rule.id;
+          sent_event.path = file;
+          sent_event.event_type = "sent";
+          sent_event.timestamp = event.timestamp;
+          events_.push_back(sent_event);
           if (callback_) {
-            callback_(event);
+            callback_(sent_event);
           }
         }
       }

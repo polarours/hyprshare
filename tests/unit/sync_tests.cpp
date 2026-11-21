@@ -207,6 +207,57 @@ int main() {
     }
   }
 
+  // Automatic syncing: once started, a new file in a watched push rule is
+  // transferred without calling sync_now. This guards against the old
+  // watch_loop that only recorded "modified" events and never sent bytes.
+  {
+    constexpr std::uint16_t auto_port = 28997;
+    const auto auto_dir = temp_root / "auto-inbox";
+    const auto auto_src = temp_root / "auto-source";
+    std::filesystem::create_directories(auto_dir);
+    std::filesystem::create_directories(auto_src);
+
+    hyprshare::platform::ProcessRunner auto_runner;
+    std::thread auto_server([&]() {
+      static_cast<void>(hyprshare::core::serve_inbox(
+        "127.0.0.1", auto_port, auto_dir, 10, "", 15, 0, &auto_runner, {}));
+    });
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    hyprshare::sync::FileSyncService auto_service;
+    hyprshare::sync::SyncRule auto_rule;
+    auto_rule.id = "auto-rule";
+    auto_rule.name = "auto";
+    auto_rule.local_path = auto_src;
+    auto_rule.remote_address = "127.0.0.1:" + std::to_string(auto_port);
+    auto_rule.direction = hyprshare::sync::SyncDirection::LocalToRemote;
+    expect(auto_service.add_rule(auto_rule).has_value(), "auto rule should be accepted");
+    expect(auto_service.start().has_value(), "the sync service should start");
+
+    // Wait for the first scan, then add a new file that must be auto-sent.
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    {
+      std::ofstream out(auto_src / "auto.txt");
+      out << "auto synced content";
+    }
+    std::this_thread::sleep_for(std::chrono::seconds(7));
+    auto_service.stop();
+
+    std::size_t auto_received = 0;
+    for (const auto& entry : std::filesystem::recursive_directory_iterator(auto_dir)) {
+      if (entry.is_regular_file()) ++auto_received;
+    }
+    expect(auto_received > 0,
+      "the watcher should have auto-sent the changed file without sync_now");
+
+    // Stop the persistent inbox with one filler upload.
+    const auto filler = temp_root / "auto-filler.txt";
+    { std::ofstream out(filler); out << "filler"; }
+    static_cast<void>(hyprshare::core::put_inbox_file(
+      "127.0.0.1", auto_port, filler, "filler.txt"));
+    if (auto_server.joinable()) auto_server.join();
+  }
+
   expect(!service.remove_rule("rule-1").has_value() || true, "removing a rule should work");
   expect(!service.sync_now("rule-1").has_value(), "a removed rule should not be found");
 
