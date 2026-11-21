@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Fixed clipboard reads on Wayland**: `ProcessRunner::run_shell` was closing
+  stdin in the spawned shell, which made wl-clipboard abort with "closed
+  standard file descriptor" — `clipboard read` and `share clipboard` always
+  failed. Stdin now points at `/dev/null` (valid fd, never blocks).
+- **`share clipboard` now stages a session by default**, matching
+  `share file|folder`; `--dry-run` inspects the raw text, `--stage` is a no-op.
+  The `share --help` lines were corrected to show `--dry-run` for all three.
 - **TUI can clear transfer history**: press `d` on the Inbox page, then `y`
   to confirm (or `n` / Esc to cancel). The list reloads automatically after
   clearing.

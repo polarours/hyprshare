@@ -176,25 +176,28 @@ std::expected<int, std::string> handle_share(CommandContext& ctx, std::vector<st
       return 1;
     }
 
-    if (ctx.stage) {
-      const auto staged = hyprshare::core::stage_clipboard_text(*clipboard, ctx.paths, ctx.runner);
-      if (!staged.has_value()) {
-        std::cerr << "error: " << staged.error() << "\n";
-        return 1;
-      }
-
+    // Same contract as `share file|folder`: --dry-run inspects what would be
+    // shared (the raw clipboard text), the default stages a session, and
+    // --stage stays an accepted no-op for compatibility.
+    if (ctx.dry_run) {
       if (ctx.json) {
-        print_staged_share_json(*staged);
+        print_clipboard_text_json(*clipboard);
       } else {
-        print_staged_share_text(*staged);
+        print_clipboard_summary_text(*clipboard);
       }
       return 0;
     }
 
+    const auto staged = hyprshare::core::stage_clipboard_text(*clipboard, ctx.paths, ctx.runner);
+    if (!staged.has_value()) {
+      std::cerr << "error: " << staged.error() << "\n";
+      return 1;
+    }
+
     if (ctx.json) {
-      print_clipboard_text_json(*clipboard);
+      print_staged_share_json(*staged);
     } else {
-      print_clipboard_summary_text(*clipboard);
+      print_staged_share_text(*staged);
     }
     return 0;
   }

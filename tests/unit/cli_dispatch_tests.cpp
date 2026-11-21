@@ -362,6 +362,35 @@ int main(int argc, char** argv) {
       "`share file --dry-run` should print the manifest: " + inspected.output);
   }
 
+  // `share clipboard` follows the same contract: the default stages a
+  // session, --dry-run inspects the text only. The clipboard write/read here
+  // also guards the wl-clipboard fd bug (stdin must stay a valid fd).
+  {
+    const RunResult written = run_hyprshare(binary, "clipboard write --text hyprshare-clip-probe");
+    expect(written.exit_code == 0,
+      "`clipboard write` should succeed: " + written.output);
+
+    const RunResult read = run_hyprshare(binary, "clipboard read --json");
+    expect(read.exit_code == 0,
+      "`clipboard read` should succeed (wl-clipboard valid stdin fd): " + read.output);
+    expect(read.output.find("hyprshare-clip-probe") != std::string::npos,
+      "clipboard read should return the written text: " + read.output);
+
+    const RunResult inspected = run_hyprshare(binary, "share clipboard --dry-run");
+    expect(inspected.exit_code == 0,
+      "`share clipboard --dry-run` should succeed: " + inspected.output);
+    expect(inspected.output.find("Session:") == std::string::npos,
+      "`share clipboard --dry-run` should not stage: " + inspected.output);
+
+    const RunResult staged = run_hyprshare(binary, "share clipboard");
+    expect(staged.exit_code == 0,
+      "`share clipboard` should stage by default: " + staged.output);
+    expect(staged.output.find("Session:") != std::string::npos,
+      "`share clipboard` default should create a session: " + staged.output);
+    expect(staged.output.find("session serve") != std::string::npos,
+      "`share clipboard` default should print the serve next step: " + staged.output);
+  }
+
   // The plugin loader is exercised end to end: a real shared object is loaded
   // through the CLI, and the registration must survive across processes.
   if (argc >= 3) {

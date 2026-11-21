@@ -167,9 +167,9 @@ hyprshare session export <id> [--to <bundle>] [--json]
 hyprshare session import <bundle> [--json]
 hyprshare session receive <id> [--to <path>] [--json])");
   registry.register_command("share", hyprshare::cli::handle_share,
-    "hyprshare share file <path> [--stage] [--json]\n"
-    "hyprshare share folder <path> [--stage] [--json]\n"
-    "hyprshare share clipboard [--stage] [--json]\n"
+    "hyprshare share file <path> [--dry-run] [--json]\n"
+    "hyprshare share folder <path> [--dry-run] [--json]\n"
+    "hyprshare share clipboard [--dry-run] [--json]\n"
     "hyprshare share screen [--app <app>] [--dry-run] [--json]");
   registry.register_command("app", hyprshare::cli::handle_app,
     "hyprshare app launch <app> [--dry-run] [--json]");

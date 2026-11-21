@@ -45,7 +45,13 @@ CommandResult ProcessRunner::run_shell(const std::string_view command) const {
   // The error output goes to the same file. This has to happen after the
   // file was opened onto the standard output, or it would replace it.
   posix_spawn_file_actions_adddup2(&actions, STDOUT_FILENO, STDERR_FILENO);
-  posix_spawn_file_actions_addclose(&actions, STDIN_FILENO);
+  // Keep stdin as a valid fd pointing at /dev/null. Closing it outright makes
+  // wl-clipboard abort with "launched with a closed standard file descriptor":
+  // wl-paste/wl-copy need a valid fd 0 for their compositor handshake.
+  // /dev/null is valid and never blocks, so commands that ignore stdin behave
+  // the same as before.
+  posix_spawn_file_actions_addopen(&actions, STDIN_FILENO, "/dev/null",
+    O_RDONLY, 0);
 
   std::string shell_command(command);
   char shell_path[] = "/bin/sh";
