@@ -317,6 +317,7 @@ target_link_libraries(
   hyprshare_security
   PUBLIC
     hyprshare_build_config
+    hyprshare_platform_linux
 )
 
 add_library(

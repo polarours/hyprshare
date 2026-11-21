@@ -51,6 +51,7 @@ class SecurityAuditor {
 
  private:
   void register_checks();
+  std::expected<SecurityCheck, std::string> run_one_check(const std::string& id);
   std::expected<SecurityCheck, std::string> check_tls_config();
   std::expected<SecurityCheck, std::string> check_file_permissions();
   std::expected<SecurityCheck, std::string> check_network_security();
