@@ -257,6 +257,7 @@ target_link_libraries(
   hyprshare_batch
   PUBLIC
     hyprshare_build_config
+    hyprshare_platform_linux
 )
 
 add_library(

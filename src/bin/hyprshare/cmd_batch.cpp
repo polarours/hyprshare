@@ -25,40 +25,39 @@ std::expected<int, std::string> handle_batch([[maybe_unused]] CommandContext& ct
       return 1;
     }
 
+    bool any_failed = false;
     for (const auto& result : *results) {
       if (result.exit_code != 0) {
         std::cerr << "Command failed with exit code " << result.exit_code << "\n";
         if (!result.error.empty()) {
           std::cerr << "  Error: " << result.error << "\n";
         }
+        any_failed = true;
       }
     }
 
-    return 0;
+    return any_failed ? 1 : 0;
   }
 
   if (args[1] == "run-commands") {
-    std::vector<hyprshare::batch::BatchCommand> commands;
-
+    // Each remaining argument is a complete shell command line, e.g.
+    // `hyprshare batch run-commands "echo hi" "false"` runs both.
+    std::vector<std::expected<batch::BatchResult, std::string>> results;
     for (std::size_t i = 2; i < args.size(); ++i) {
-      hyprshare::batch::BatchCommand cmd;
-      cmd.command = args[i];
-      commands.push_back(cmd);
+      results.push_back(runner.run_line(args[i]));
     }
 
-    auto results = runner.run_commands(commands);
-    if (!results.has_value()) {
-      std::cerr << "error: " << results.error() << "\n";
-      return 1;
-    }
-
-    for (const auto& result : *results) {
-      if (result.exit_code != 0) {
-        std::cerr << "Command failed with exit code " << result.exit_code << "\n";
+    bool any_failed = false;
+    for (const auto& result : results) {
+      if (!result.has_value()) {
+        std::cerr << "error: " << result.error() << "\n";
+        any_failed = true;
+      } else if (result->exit_code != 0) {
+        std::cerr << "Command failed with exit code " << result->exit_code << "\n";
+        any_failed = true;
       }
     }
-
-    return 0;
+    return any_failed ? 1 : 0;
   }
 
   return std::unexpected("unknown batch subcommand: " + args[1]);

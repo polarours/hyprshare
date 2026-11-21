@@ -4,6 +4,9 @@
 #include <iostream>
 #include <sstream>
 
+#include "hyprshare/platform/process.hpp"
+#include "hyprshare/util/string.hpp"
+
 namespace hyprshare::batch {
 
 BatchRunner::BatchRunner() {}
@@ -40,13 +43,24 @@ std::expected<std::vector<BatchResult>, std::string> BatchRunner::run_commands(
 
   for (const auto& command : commands) {
     auto result = run_single(command.command, command.args);
-    results.push_back(*result);
-
-    if (!result.has_value() && stop_on_error_) {
-      break;
+    if (!result.has_value()) {
+      // A launch failure is a real failure — never dereference an unexpected.
+      BatchResult failed;
+      failed.exit_code = -1;
+      failed.error = result.error();
+      results.push_back(failed);
+      if (stop_on_error_ && !command.continue_on_error) {
+        break;
+      }
+      continue;
     }
 
-    if (result->exit_code != 0 && stop_on_error_) {
+    const bool failed = result->exit_code != 0;
+    results.push_back(*result);
+
+    // `||` on a line means "continue even if this one fails"; stop_on_error_
+    // is the global default. Either condition permits continuing.
+    if (failed && stop_on_error_ && !command.continue_on_error) {
       break;
     }
   }
@@ -56,17 +70,41 @@ std::expected<std::vector<BatchResult>, std::string> BatchRunner::run_commands(
 
 std::expected<BatchResult, std::string> BatchRunner::run_single(
   const std::string& command, const std::vector<std::string>& args) {
-  BatchResult result;
-
-  std::cout << "Running: " << command;
-  for (const auto& arg : args) {
-    std::cout << " " << arg;
+  if (command.empty()) {
+    return std::unexpected("empty command");
   }
-  std::cout << "\n";
+  // Build a shell command with every token quoted so arguments containing
+  // spaces or shell metacharacters stay a single argument.
+  std::ostringstream stream;
+  stream << util::shell_quote(command);
+  for (const auto& arg : args) {
+    stream << ' ' << util::shell_quote(arg);
+  }
 
-  result.exit_code = 0;
-  result.output = "Command executed: " + command;
+  const platform::ProcessRunner runner;
+  const platform::CommandResult executed = runner.run_shell(stream.str());
 
+  BatchResult result;
+  result.exit_code = executed.exit_code;
+  result.output = executed.output;
+  if (executed.exit_code != 0) {
+    result.error = "command exited with code " + std::to_string(executed.exit_code);
+  }
+  return result;
+}
+
+std::expected<BatchResult, std::string> BatchRunner::run_line(const std::string& line) {
+  if (line.empty()) {
+    return std::unexpected("empty command line");
+  }
+  const platform::ProcessRunner runner;
+  const platform::CommandResult executed = runner.run_shell(line);
+  BatchResult result;
+  result.exit_code = executed.exit_code;
+  result.output = executed.output;
+  if (executed.exit_code != 0) {
+    result.error = "command exited with code " + std::to_string(executed.exit_code);
+  }
   return result;
 }
 
