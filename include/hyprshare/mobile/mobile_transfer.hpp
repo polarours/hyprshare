@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <thread>
+#include <mutex>
 #include <cstdint>
 #include <expected>
 #include <filesystem>
@@ -60,6 +61,7 @@ class MobileTransferServer {
   std::atomic<bool> running_{false};
   TransferCallback callback_;
   std::vector<MobileClient> clients_;
+  std::mutex clients_mutex_;
 };
 
 }  // namespace hyprshare::mobile

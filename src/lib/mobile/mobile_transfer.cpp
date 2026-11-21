@@ -122,13 +122,16 @@ void MobileTransferServer::stop() {
     close(server_fd_);
     server_fd_ = -1;
   }
-  for (auto& client : clients_) {
-    if (client.fd >= 0) {
-      close(client.fd);
-      client.fd = -1;
+  {
+    std::lock_guard<std::mutex> lock(clients_mutex_);
+    for (auto& client : clients_) {
+      if (client.fd >= 0) {
+        close(client.fd);
+        client.fd = -1;
+      }
     }
+    clients_.clear();
   }
-  clients_.clear();
 }
 
 bool MobileTransferServer::is_running() const {
@@ -146,11 +149,19 @@ std::expected<void, std::string> MobileTransferServer::send_file(
     return std::unexpected("file not found: " + file_path.string());
   }
 
-  for (const auto& client : clients_) {
-    if (client.device_id != device_id || client.fd < 0) {
-      continue;
+  // Snapshot the matching descriptors under the lock, then stream without it:
+  // holding the mutex across socket writes would block accept/auth handling.
+  std::vector<int> targets;
+  {
+    std::lock_guard<std::mutex> lock(clients_mutex_);
+    for (const auto& client : clients_) {
+      if (client.device_id == device_id && client.fd >= 0) {
+        targets.push_back(client.fd);
+      }
     }
+  }
 
+  for (const int client_fd : targets) {
     FileTransfer transfer;
     transfer.name = file_path.filename().string();
     transfer.local_path = file_path;
@@ -159,7 +170,7 @@ std::expected<void, std::string> MobileTransferServer::send_file(
     const std::string offer = "{\"type\":\"file_offer\",\"payload\":{\"name\":\"" +
                               transfer.name + "\",\"size\":" +
                               std::to_string(transfer.size) + "}}\n";
-    if (!send_all(client.fd, offer.data(), offer.size())) {
+    if (!send_all(client_fd, offer.data(), offer.size())) {
       return std::unexpected("failed to send file offer to " + device_id);
     }
 
@@ -176,7 +187,7 @@ std::expected<void, std::string> MobileTransferServer::send_file(
       if (got == 0) {
         break;
       }
-      if (!send_all(client.fd, chunk.data(), got)) {
+      if (!send_all(client_fd, chunk.data(), got)) {
         return std::unexpected("failed while streaming file bytes to " + device_id);
       }
       total_sent += got;
@@ -256,7 +267,10 @@ void MobileTransferServer::handle_auth(const int client_fd, const std::string& p
   client.device_id = extract_quoted(payload, "device_id");
   client.device_name = extract_quoted(payload, "device_name");
 
-  clients_.push_back(client);
+  {
+    std::lock_guard<std::mutex> lock(clients_mutex_);
+    clients_.push_back(client);
+  }
 
   const std::string response = "{\"type\":\"auth_response\",\"payload\":{\"status\":\"ok\"}}\n";
   send_all(client_fd, response.data(), response.size());

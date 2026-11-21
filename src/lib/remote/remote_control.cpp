@@ -115,7 +115,7 @@ std::expected<void, std::string> RemoteControlServer::send_screen_frame(
                             std::to_string(width) + ",\"height\":" + std::to_string(height) +
                             ",\"size\":" + std::to_string(size) + "}}\n";
 
-  std::lock_guard<std::mutex> lock(client_mutex_);
+  std::unique_lock<std::mutex> lock(client_mutex_);
   if (client_fds_.empty()) {
     return std::unexpected("no clients connected");
   }
@@ -133,6 +133,7 @@ std::expected<void, std::string> RemoteControlServer::send_screen_frame(
       last_errno = errno;
     }
   }
+  lock.unlock();
 
   if (delivered == 0) {
     std::string message = "failed to send frame to any client";
@@ -140,6 +141,17 @@ std::expected<void, std::string> RemoteControlServer::send_screen_frame(
       message += ": " + std::string(std::strerror(last_errno));
     }
     return std::unexpected(message);
+  }
+
+  // Notify observers after the lock is released: a callback may itself send a
+  // frame or otherwise re-enter this server.
+  if (frame_callback_ && data != nullptr) {
+    ScreenFrame frame;
+    frame.width = width;
+    frame.height = height;
+    frame.format = "rgb24";
+    frame.data.assign(data, data + size);
+    frame_callback_(frame);
   }
   return {};
 }
