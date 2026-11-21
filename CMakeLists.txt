@@ -756,3 +756,16 @@ install(FILES
   docs/user-guide.md
   DESTINATION ${CMAKE_INSTALL_DOCDIR}
 )
+
+# CPack: `cpack -G DEB` from the build dir (used by CI's package job).
+set(CPACK_PACKAGE_NAME "hyprshare")
+set(CPACK_PACKAGE_VENDOR "polarours")
+set(CPACK_PACKAGE_DESCRIPTION_SUMMARY
+  "Linux-native sharing platform for Hyprland and Wayland")
+set(CPACK_PACKAGE_VERSION "${PROJECT_VERSION}")
+set(CPACK_PACKAGE_LICENSE "GPL-3.0-only")
+set(CPACK_PACKAGE_CONTACT "polarours@zohomail.com")
+set(CPACK_DEBIAN_PACKAGE_SECTION "utils")
+set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
+set(CPACK_GENERATOR "DEB")
+include(CPack)
