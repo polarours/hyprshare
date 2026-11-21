@@ -145,7 +145,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             spawn_load(sender.clone());
                             last_refresh = Instant::now();
                         }
-                        KeyCode::Char('w') => app.write_mode = !app.write_mode,
+                        KeyCode::Char('w') if !app.write_mode => app.write_mode = true,
+                        KeyCode::Esc if app.write_mode => app.write_mode = false,
                         KeyCode::Char('s') if !app.write_mode && app.tab == 1 => {
                             app.serve_status = Some(
                                 spawn_inbox_serve()
@@ -263,7 +264,9 @@ impl App {
         } else if self.confirm_clear {
             "Clear all transfer history? y = confirm · n / Esc = cancel".to_string()
         } else if self.write_mode {
-            "WRITE MODE: type, Enter to write to the clipboard, w to cancel".to_string()
+            "WRITE MODE: type, Enter to write to the clipboard, Esc to cancel".to_string()
+        } else if let Some(error) = model_error_hint(self) {
+            error
         } else if let Some(notice) = &self.notice {
             notice.clone()
         } else if let Some(serve) = &self.serve_status {
@@ -323,7 +326,7 @@ impl App {
                 Line::from(format!("> {}", self.write_input)),
                 Line::from(Span::styled(
                     if self.write_status.is_empty() {
-                        "Enter to write · w to cancel".to_string()
+                        "Enter to write · Esc to cancel".to_string()
                     } else {
                         self.write_status.clone()
                     },
@@ -336,7 +339,7 @@ impl App {
 
         // Help line.
         let keys = if self.write_mode {
-            "Enter write · w cancel"
+            "Enter write · Esc cancel"
         } else {
             "Tab/←→ switch · 1-3 pages · r refresh · w write clipboard · s serve inbox · d clear history · q quit"
         };
@@ -467,10 +470,13 @@ impl App {
             .take(area.height.saturating_sub(2) as usize)
             .enumerate()
             .map(|(i, item)| {
-                let text = if item.content.len() > 60 {
-                    format!("{}…", &item.content[..60])
-                } else {
+                let text = {
+                  let chars: Vec<char> = item.content.chars().collect();
+                  if chars.len() > 60 {
+                    format!("{}…", chars[..60].iter().collect::<String>())
+                  } else {
                     item.content.clone()
+                  }
                 };
                 Row::new(vec![
                     Cell::from(format!("{}", i + 1)).style(Style::new().fg(Color::DarkGray)),
@@ -496,13 +502,14 @@ impl App {
 }
 
 fn model_error_hint(app: &App) -> Option<String> {
-    // The model is None until the first load finishes; errors are surfaced as
-    // a special model. Kept simple: only show a hint while still loading.
-    if !app.refreshing {
-        None
-    } else {
-        None
-    }
+    app.model.as_ref().and_then(|model| {
+        if model.load_errors.is_empty() {
+            None
+        } else {
+            let shown = model.load_errors.iter().take(2).cloned().collect::<Vec<_>>().join(" · ");
+            Some(format!("CLI data unavailable: {shown}"))
+        }
+    })
 }
 
 fn kv_row(key: &str, value: impl Into<String>) -> Row<'static> {

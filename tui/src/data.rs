@@ -118,6 +118,7 @@ pub struct Model {
     pub inbox: Inbox,
     pub history: Vec<HistoryEntry>,
     pub clipboard_history: Vec<ClipboardItem>,
+    pub load_errors: Vec<String>,
 }
 
 impl Model {
@@ -147,27 +148,49 @@ impl Model {
     pub fn load(run: &dyn Fn(&[&str]) -> Result<String, String>) -> Result<Model, String> {
         let mut model = Model::default();
 
-        model.status = parse(run, &["status", "--json"]).unwrap_or_default();
-        model.snapshot = parse(run, &["monitor", "snapshot", "--json"]).unwrap_or_default();
-        let doctor: DoctorJson = parse(run, &["doctor", "--json"]).unwrap_or_default();
-        model.health = Health::from_doctor(doctor);
-        model.device = parse(run, &["peer", "self", "--json"]).unwrap_or_default();
-        model.inbox = parse(run, &["inbox", "status", "--json"]).unwrap_or_default();
-        model.history = parse(run, &["inbox", "history", "--json"]).unwrap_or_default();
-        model.clipboard_history =
-            parse(run, &["clipboard-sync", "history", "--json"]).unwrap_or_default();
+        // Record each failed CLI call so the UI can say why a panel is empty
+        // instead of silently showing zeros that look like real data.
+        let mut load_errors: Vec<String> = Vec::new();
+        let mut parse_into = |args: &[&str], label: &str, sink: &mut dyn FnMut(Option<String>)| {
+            match run(args) {
+                Ok(text) if !text.trim().is_empty() => sink(Some(text)),
+                Ok(_) => {
+                    load_errors.push(format!("{label}: empty output"));
+                    sink(None);
+                }
+                Err(err) => {
+                    load_errors.push(format!("{label}: {err}"));
+                    sink(None);
+                }
+            }
+        };
 
+        parse_into(&["status", "--json"], "status", &mut |v| {
+            if let Some(v) = v { model.status = serde_json::from_str(&v).unwrap_or_default(); }
+        });
+        parse_into(&["monitor", "snapshot", "--json"], "monitor", &mut |v| {
+            if let Some(v) = v { model.snapshot = serde_json::from_str(&v).unwrap_or_default(); }
+        });
+        parse_into(&["doctor", "--json"], "doctor", &mut |v| {
+            if let Some(v) = v {
+                let doctor: DoctorJson = serde_json::from_str(&v).unwrap_or_default();
+                model.health = Health::from_doctor(doctor);
+            }
+        });
+        parse_into(&["peer", "self", "--json"], "peer self", &mut |v| {
+            if let Some(v) = v { model.device = serde_json::from_str(&v).unwrap_or_default(); }
+        });
+        parse_into(&["inbox", "status", "--json"], "inbox status", &mut |v| {
+            if let Some(v) = v { model.inbox = serde_json::from_str(&v).unwrap_or_default(); }
+        });
+        parse_into(&["inbox", "history", "--json"], "inbox history", &mut |v| {
+            if let Some(v) = v { model.history = serde_json::from_str(&v).unwrap_or_default(); }
+        });
+        parse_into(&["clipboard-sync", "history", "--json"], "clipboard history", &mut |v| {
+            if let Some(v) = v { model.clipboard_history = serde_json::from_str(&v).unwrap_or_default(); }
+        });
+
+        model.load_errors = load_errors;
         Ok(model)
     }
-}
-
-fn parse<T: serde::de::DeserializeOwned>(
-    run: &dyn Fn(&[&str]) -> Result<String, String>,
-    args: &[&str],
-) -> Option<T> {
-    let text = run(args).ok()?;
-    if text.is_empty() {
-        return None;
-    }
-    serde_json::from_str(&text).ok()
 }

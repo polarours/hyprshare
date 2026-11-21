@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `text`, and Push to peer pushes content first — the CLI's `push_to_peer` now
   reads persistent history so the cross-process send works. Sessions serving
   binds `0.0.0.0` and shows the machine's LAN IP.
+- **Fixed TUI input bugs**: `w` is now typeable inside clipboard write mode
+  (Esc exits), Unicode history is truncated by chars (no byte-slice panic),
+  and failed CLI loads surface an error in the status bar instead of silently
+  showing zeros.
 - **Fixed backend modules that faked results**: `batch` runs real commands;
   `audit` performs real permission/network/service checks; `backup` reads real
   manifest metadata; `sync` auto-syncs changed files; `cloud` reports transfer
