@@ -1,106 +1,145 @@
+<a id="readme-top"></a>
+
+<div align="center">
+
+<img src="desktop/src-tauri/icons/icon.svg" width="110" alt="hyprshare logo" />
+
 # hyprshare
 
-`hyprshare` is a Linux-native sharing platform for Hyprland and Wayland. It
-unifies file transfer, clipboard exchange, screen capture, peer trust, and
-system diagnostics behind one CLI-first architecture. One install gives you
-four front-ends over the same CLI: the `hyprshare` command, the `hyprshare-tui`
-terminal UI, the `hyprshare-desktop` GUI, and the `hyprshare web serve` web UI.
+**One install. Every way to share — CLI, terminal UI, desktop app, and web.**
 
-## Front-ends
+A Linux-native sharing platform built for Hyprland and Wayland. Files,
+clipboard, screen capture, and trusted peers — all driven by one CLI-first
+core, with four frontends that can never disagree with each other.
 
-- **CLI** — `hyprshare --help`, 34 top-level commands
-- **TUI** — `hyprshare-tui`: a ratatui dashboard (device, inbox, clipboard;
-  Tab/1-3 to switch, r to refresh, w to write the clipboard, q to quit)
-- **Desktop GUI** — `hyprshare-desktop`: a macOS-style Tauri window with six
-  pages and light/dark/system themes
-- **Web UI** — `hyprshare web serve`: REST API plus the React frontend at
-  `http://127.0.0.1:8080/` (override the frontend location with
-  `HYPRSHARE_WEB_DIR`)
+[![Stars](https://img.shields.io/github/stars/polarours/hyprshare?style=social)](https://github.com/polarours/hyprshare/stargazers)
+[![CI](https://github.com/polarours/hyprshare/actions/workflows/ci.yml/badge.svg)](https://github.com/polarours/hyprshare/actions/workflows/ci.yml)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPL--3.0-blue.svg)](LICENSE)
+[![Platform: Linux](https://img.shields.io/badge/Platform-Linux%20%7C%20Wayland-blue)](docs/compatibility/matrix.md)
+[![C++23](https://img.shields.io/badge/C%2B%2B-23-orange)](CMakeLists.txt)
 
-Every front-end is a subprocess caller of the CLI, so they cannot disagree.
+[Install](#install) • [Why hyprshare](#why-hyprshare) • [Features](#features) • [Frontends](#frontends) • [Quick start](#quick-start) • [Docs](#documentation)
+
+</div>
+
+![hyprshare desktop GUI — dashboard with device identity and system health](docs/assets/gui-dashboard.png)
+
+<br />
+
+## Why hyprshare
+
+Sharing between your Linux machines usually means stitching together `scp`,
+a clipboard tool, a screenshot utility, and a hand-rolled HTTP server. Each
+has its own trust model and its own quirks — and none of them talk to each
+other.
+
+hyprshare gives you one tool that covers the whole path:
+
+- **One identity per device**, with offline invitations, pairing, and mDNS
+  discovery — no account, no cloud, no third-party relay.
+- **One transfer primitive** — a *session* — that every frontend stages,
+  serves, and fetches the same way.
+- **One install** on Arch Linux provides the CLI, daemon, TUI, desktop GUI,
+  and web UI. The frontends are thin subprocess callers of the CLI, so a
+  command behaves identically everywhere.
 
 ## Features
 
-- **File inbox and share sessions** — stage a file or folder, serve it with a
-  token and a lifetime, fetch from the peer side; HTTP inbox with checksums,
-  extraction, and transfer history
-- **Peer identity and trust** — per-device identity, trusted peers, offline
-  invitations and pairing, mDNS/Avahi discovery
-- **TLS/mTLS transport** — OpenSSL with self-signed X.509 v3 certificates
-- **Clipboard** — read/write plus cross-device sync with persistent history
-- **Screen capture and recording** — xdg-desktop-portal + PipeWire, OBS
-  fallback; MP4/WebM/MKV encoding via ffmpeg
-- **34 top-level commands**: sync, cloud, backup, search, monitor, netdiag,
-  tls, plugin, batch, daemon, update, profile, and more
-- **Desktop GUI** (`hyprshare-desktop`, Tauri): six macOS-style pages with
-  light/dark/system themes; every action is a pass-through to the CLI
-- **Web interface** — REST API + React frontend
-- **Plugin system** — shared objects contributing CLI commands
+| | |
+|---|---|
+| 📦 **File & folder sharing** | Stage a session, serve it with a token and lifetime, fetch from the peer side. Checksums and payload verification built in. |
+| 📥 **HTTP inbox** | Receive uploads over LAN with token auth, extraction, size limits, and transfer history. |
+| 📋 **Clipboard** | Read/write plus cross-device sync with persistent history. |
+| 🖥️ **Screen capture & recording** | xdg-desktop-portal + PipeWire, OBS fallback, MP4/WebM/MKV encoding via ffmpeg. |
+| 🔐 **TLS/mTLS transport** | OpenSSL with self-signed X.509 v3 certificates. |
+| 🤝 **Peer trust** | Per-device identity, offline invitations, pairing, Avahi discovery. |
+| 🧩 **34 CLI commands** | sync, cloud, backup, search, monitor, netdiag, tls, plugin, batch, daemon, update, profile, and more. |
+| 🔌 **Plugin system** | Shared objects contribute new CLI commands at runtime. |
 
-An implementation status table lives in
-[docs/architecture/overview.md](docs/architecture/overview.md).
+See the [implementation status table](docs/architecture/overview.md) for what
+is complete and what is planned.
 
-## Build
+## Frontends
 
-Requirements: CMake ≥ 3.28, Ninja, a C++23 compiler, OpenSSL, sdbus-c++,
-PipeWire headers. The GUI additionally needs Rust, Node.js/npm.
+| Frontend | Launch | What it is |
+|---|---|---|
+| **CLI** | `hyprshare --help` | 34 commands, the single source of truth |
+| **TUI** | `hyprshare-tui` | ratatui dashboard — device, inbox, clipboard, receiver control |
+| **Desktop** | `hyprshare-desktop` | Tauri window with seven pages and light/dark/system themes |
+| **Web** | `hyprshare web serve` | REST API + React frontend at `http://127.0.0.1:8080/` |
 
-```bash
-# Build CLI + daemon
-cmake -S . -B build -G Ninja
-cmake --build build
-ctest --test-dir build --output-on-failure   # 13 test suites
+Every frontend is a subprocess caller of the CLI.
 
-# Build TUI (cargo)
-cargo build --release --manifest-path tui/Cargo.toml
+## Install
 
-# Build desktop GUI (builds the web frontend, then embeds it)
-cd web && npm install && npm run build && cd ..
-cd desktop/src-tauri && cargo build --release
-```
-
-## Run
+Arch Linux (one AUR package provides everything):
 
 ```bash
-./build/hyprshare doctor                       # health check
-
-# GUI (needs the CLI on PATH)
-export PATH="$PWD/build:$PATH"
-./tui/target/release/hyprshare-tui             # terminal UI
-./desktop/src-tauri/target/release/hyprshare-desktop   # desktop GUI
-./build/hyprshare web serve --port 8080        # web UI: open http://127.0.0.1:8080/
-
-# End-to-end file transfer between two machines
-./build/hyprshare share file photo.jpg               # machine A: stages a session
-./build/hyprshare session serve <id> --port 29111 --generate-token
-./build/hyprshare session fetch <host:port> --token <t> --to ~/recv   # machine B
-# Inspect what would be shared without staging: add --dry-run
-
-# HTTP inbox
-./build/hyprshare inbox serve --port 8888 --to ~/Downloads --generate-token
-./build/hyprshare inbox put <host:8888> file.jpg --token <t>
+yay -S hyprshare
 ```
 
-See the full command surface with `hyprshare --help`, and per-command usage
-with `hyprshare <command> --help`.
+See [packaging/arch/](packaging/arch/README.md) for details and manual
+installation.
+
+## Quick start
+
+```bash
+hyprshare doctor                                   # check your environment
+
+# Send a file to another machine
+hyprshare share file photo.jpg                     # machine A: stages a session
+hyprshare session serve <id> --generate-token      # machine A: serve it
+hyprshare session fetch <host:port> --token <t> --to ~/recv   # machine B
+
+# Receive files from another device
+hyprshare inbox serve --generate-token             # this machine: listen
+hyprshare inbox put <host:8888> file.jpg --token <t>          # peer: send
+```
+
+Add `--json` to any command for machine-readable output, and `--help` to any
+command for its full usage.
 
 ## Architecture
 
-- `src/lib/<module>/` — one static library per concern (core, tls, portal,
-  daemon, cloud, sync, recording, diagnostics, …), public headers in
+```mermaid
+flowchart LR
+    CLI["hyprshare CLI<br/>command registry"]
+    TUI["hyprshare-tui"]
+    GUI["hyprshare-desktop"]
+    WEB["web UI<br/>REST API"]
+
+    CLI --> Core["Core libraries<br/>core · tls · portal · daemon<br/>cloud · sync · recording · diagnostics"]
+    TUI -.subprocess.-> CLI
+    GUI -.subprocess.-> CLI
+    WEB -.REST.-> CLI
+    Core --> Net["OpenSSL TLS / mTLS"]
+    Core --> Bus["Unix socket IPC<br/>hyprshared"]
+    Core --> Portal["xdg-desktop-portal<br/>PipeWire"]
+```
+
+- `src/lib/<module>/` — one static library per concern; public headers in
   `include/hyprshare/`
-- `src/bin/hyprshare/` — the CLI (command registry + one handler per command)
-- `src/bin/hyprshared/` — the daemon binary (Unix socket IPC)
-- `desktop/` — the Tauri GUI; `web/` — the React frontend shared by GUI and
-  web serve; `mobile/` — Android (Kotlin) and iOS (Swift) client sources
+- `src/bin/hyprshare/` — CLI (command registry + one handler per command)
+- `src/bin/hyprshared/` — daemon binary (Unix socket IPC)
+- `desktop/` — Tauri GUI; `web/` — React frontend shared with the web UI
 - `tests/unit/` — per-module test binaries registered with CTest
 
-Decisions are recorded as ADRs in [docs/adr/](docs/adr/README.md).
+Decisions are recorded as [ADRs](docs/adr/README.md).
 
-## Installation
+## Build from source
 
-Arch Linux: one AUR package, `hyprshare`, provides the CLI/daemon, TUI,
-desktop GUI and web UI; see [packaging/arch/](packaging/arch/README.md).
+Requirements: CMake ≥ 3.28, Ninja, a C++23 compiler, OpenSSL, sdbus-c++,
+PipeWire headers. The GUI additionally needs Rust and Node.js/npm.
+
+```bash
+cmake -S . -B build -G Ninja && cmake --build build
+ctest --test-dir build --output-on-failure            # 13 test suites
+
+cargo build --release --manifest-path tui/Cargo.toml
+
+cd web && npm install && npm run build && cd ..
+cd desktop/src-tauri && cargo build --release
+```
 
 ## Documentation
 
@@ -113,4 +152,10 @@ desktop GUI and web UI; see [packaging/arch/](packaging/arch/README.md).
 
 ## License
 
-GPL-3.0-only, see [LICENSE](LICENSE).
+GPL-3.0-only — see [LICENSE](LICENSE).
+
+<div align="right">
+
+[Back to top](#readme-top)
+
+</div>
