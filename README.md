@@ -8,12 +8,17 @@
 
 ### Share anything, from the terminal to the desktop — without leaving Hyprland.
 
+> [!WARNING]
+> **hyprshare is under active development and has not been officially released yet.**
+> Expect rough edges and breaking changes. Bug reports, feedback, and testers
+> are very welcome — see [Running locally](docs/running-locally.md) to try it.
+
 [![stars](https://img.shields.io/github/stars/polarours/hyprshare?style=social)](https://github.com/polarours/hyprshare/stargazers)
 [![license](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
 [![linux](https://img.shields.io/badge/platform-Linux%20%7C%20Wayland-blue)](docs/compatibility/matrix.md)
 [![C++23](https://img.shields.io/badge/C%2B%2B-23-orange)](CMakeLists.txt)
 
-**[Install](#install)** &nbsp;·&nbsp; **[Features](#features)** &nbsp;·&nbsp; **[Screenshots](#screenshots)** &nbsp;·&nbsp; **[Quick start](#quick-start)** &nbsp;·&nbsp; **[Docs](#documentation)**
+**[Install](#install)** &nbsp;·&nbsp; **[Run locally](docs/running-locally.md)** &nbsp;·&nbsp; **[Features](#features)** &nbsp;·&nbsp; **[Screenshots](#screenshots)** &nbsp;·&nbsp; **[Quick start](#quick-start)** &nbsp;·&nbsp; **[Docs](#documentation)**
 
 <br />
 
@@ -198,6 +203,7 @@ the project and help others find it.
 
 ## 📚 Documentation
 
+- [Running locally](docs/running-locally.md) — build and launch all four front-ends
 - [Architecture Overview](docs/architecture/overview.md)
 - [User Guide](docs/user-guide.md) · [API Reference](docs/api-reference.md)
 - [Threat Model](docs/threat-model/threat-model.md) ·
