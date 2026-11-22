@@ -25,7 +25,24 @@ std::expected<int, std::string> handle_audit(CommandContext& ctx, std::vector<st
       std::cout << "{\"passed\":" << report->passed
                 << ",\"failed\":" << report->failed
                 << ",\"warnings\":" << report->warnings
-                << ",\"score\":" << report->score << "}\n";
+                << ",\"score\":" << report->score
+                << ",\"checks\":[";
+      for (std::size_t i = 0; i < report->checks.size(); ++i) {
+        if (i > 0) std::cout << ",";
+        const auto& check = report->checks[i];
+        const char* status_str = "skip";
+        switch (check.status) {
+          case hyprshare::security::CheckStatus::Pass: status_str = "pass"; break;
+          case hyprshare::security::CheckStatus::Fail: status_str = "fail"; break;
+          case hyprshare::security::CheckStatus::Warning: status_str = "warn"; break;
+          case hyprshare::security::CheckStatus::Skip: status_str = "skip"; break;
+        }
+        std::cout << "{\"id\":\"" << check.id
+                  << "\",\"name\":\"" << check.name
+                  << "\",\"status\":\"" << status_str
+                  << "\",\"remediation\":\"" << check.remediation << "\"}";
+      }
+      std::cout << "]}\n";
     } else {
       std::cout << "Security Audit Report\n";
       std::cout << "====================\n";

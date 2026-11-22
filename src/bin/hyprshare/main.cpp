@@ -228,7 +228,7 @@ hyprshare session receive <id> [--to <path>] [--json])");
     "hyprshare backup inspect <backup-id>");
   registry.register_command("cloud", hyprshare::cli::handle_cloud,
     "hyprshare cloud <configure|upload|download|sync|list|status>\n"
-    "hyprshare cloud configure <provider>\n"
+    "hyprshare cloud configure <provider> [--type local|http] [--endpoint <url>] [--bucket <name>] [--token <token>] [--secret <secret>]\n"
     "hyprshare cloud upload <local-path> <remote-path>\n"
     "hyprshare cloud download <remote-path> <local-path>\n"
     "hyprshare cloud sync <local-dir> <remote-dir>\n"

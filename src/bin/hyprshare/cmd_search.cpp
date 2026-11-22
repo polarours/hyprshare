@@ -13,7 +13,7 @@ namespace hyprshare::cli {
 std::expected<int, std::string> handle_search(CommandContext& ctx, std::vector<std::string>& args) {
   // args[0] is the command name ("search"); the subcommand is args[1].
   if (args.size() < 2) {
-    return std::unexpected(std::string("usage: hyprshare search <files> --path <dir> [--pattern <glob>] [--recursive] [--sort-by name|size|date] [--order asc|desc]"));
+    return std::unexpected(std::string("usage: hyprshare search <files> --path <dir> [--pattern <glob>] [--no-recursive] [--sort-by name|size|date] [--order asc|desc]"));
   }
 
   static hyprshare::search::SearchEngine engine;

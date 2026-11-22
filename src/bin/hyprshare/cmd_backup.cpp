@@ -38,6 +38,10 @@ std::expected<int, std::string> handle_backup(CommandContext& ctx, std::vector<s
     for (std::size_t i = 2; i < args.size(); ++i) {
       if (args[i] == "--description" && i + 1 < args.size()) {
         description = args[++i];
+      } else if (!args[i].starts_with("--") && description == "Manual backup") {
+        // Positional form documented in the user guide:
+        // `hyprshare backup create "Before upgrade"`.
+        description = args[i];
       }
     }
     auto result = manager.create_backup(description);
