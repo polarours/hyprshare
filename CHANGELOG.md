@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Published to the AUR as `hyprshare-git`** (tracks `master`): one package
   provides the CLI/daemon, TUI, desktop GUI and web UI. The main README and
   packaging notes now point to it.
+- **`clipboard-sync start` now runs a real detached background process** with a
+  pid file, so `status`/`stop` work across CLI invocations (the watcher used to
+  die with the starting process).
 - **Fixed installed data-directory resolution**: the binary used to hardcode
   the build-time source path as its data directory, so an installed package
   looked for backends/adapters in a nonexistent build dir. It now prefers the
