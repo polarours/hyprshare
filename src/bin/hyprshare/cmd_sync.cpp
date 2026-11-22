@@ -1,7 +1,10 @@
 #include "cmd_sync.hpp"
 
 #include <chrono>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
+#include <sstream>
 #include <thread>
 
 #include "command_utils.hpp"
@@ -11,6 +14,89 @@
 
 namespace hyprshare::cli {
 
+namespace {
+
+// Rules are persisted as one JSON object per line under the state dir, so a
+// `sync add` survives into the next CLI invocation. The service itself keeps
+// rules in memory; these helpers bridge the per-process CLI to stable storage.
+std::filesystem::path rules_file(const CommandContext& ctx) {
+  return ctx.paths.state_dir / "sync" / "rules.jsonl";
+}
+
+std::string json_escape(const std::string& value) {
+  std::string out;
+  for (const char c : value) {
+    switch (c) {
+      case '"': out += "\\\""; break;
+      case '\\': out += "\\\\"; break;
+      case '\n': out += "\\n"; break;
+      default: out += c;
+    }
+  }
+  return out;
+}
+
+std::string json_field(const std::string& line, const std::string& key) {
+  const std::string needle = "\"" + key + "\":\"";
+  const auto start = line.find(needle);
+  if (start == std::string::npos) return {};
+  const auto value_start = start + needle.size();
+  const auto end = line.find('"', value_start);
+  return end == std::string::npos ? std::string{} : line.substr(value_start, end - value_start);
+}
+
+void load_rules(const CommandContext& ctx, hyprshare::sync::FileSyncService& service) {
+  std::ifstream file(rules_file(ctx));
+  if (!file) return;
+  std::string line;
+  while (std::getline(file, line)) {
+    if (line.empty()) continue;
+    hyprshare::sync::SyncRule rule;
+    rule.id = json_field(line, "id");
+    rule.name = json_field(line, "name");
+    rule.local_path = json_field(line, "local_path");
+    rule.remote_device_id = json_field(line, "remote_device_id");
+    rule.remote_address = json_field(line, "remote_address");
+    rule.remote_token = json_field(line, "remote_token");
+    rule.remote_path = json_field(line, "remote_path");
+    const auto direction = json_field(line, "direction");
+    if (direction == "remote_to_local") {
+      rule.direction = hyprshare::sync::SyncDirection::RemoteToLocal;
+    } else if (direction == "bidirectional") {
+      rule.direction = hyprshare::sync::SyncDirection::Bidirectional;
+    } else {
+      rule.direction = hyprshare::sync::SyncDirection::LocalToRemote;
+    }
+    rule.enabled = line.find("\"enabled\":false") == std::string::npos;
+    if (!rule.id.empty()) static_cast<void>(service.add_rule(rule));
+  }
+}
+
+void save_rules(const CommandContext& ctx, hyprshare::sync::FileSyncService& service) {
+  const auto path = rules_file(ctx);
+  std::error_code error;
+  std::filesystem::create_directories(path.parent_path(), error);
+  if (error) return;
+  std::ofstream file(path, std::ios::trunc);
+  if (!file) return;
+  for (const auto& rule : service.list_rules()) {
+    const char* direction = "local_to_remote";
+    if (rule.direction == hyprshare::sync::SyncDirection::RemoteToLocal) direction = "remote_to_local";
+    if (rule.direction == hyprshare::sync::SyncDirection::Bidirectional) direction = "bidirectional";
+    file << "{\"id\":\"" << json_escape(rule.id)
+         << "\",\"name\":\"" << json_escape(rule.name)
+         << "\",\"local_path\":\"" << json_escape(rule.local_path.string())
+         << "\",\"remote_device_id\":\"" << json_escape(rule.remote_device_id)
+         << "\",\"remote_address\":\"" << json_escape(rule.remote_address)
+         << "\",\"remote_token\":\"" << json_escape(rule.remote_token)
+         << "\",\"remote_path\":\"" << json_escape(rule.remote_path.string())
+         << "\",\"direction\":\"" << direction
+         << "\",\"enabled\":" << (rule.enabled ? "true" : "false") << "}\n";
+  }
+}
+
+}  // namespace
+
 std::expected<int, std::string> handle_sync(CommandContext& ctx, std::vector<std::string>& args) {
   if (args.size() < 2) {
     return std::unexpected(std::string(
@@ -18,6 +104,8 @@ std::expected<int, std::string> handle_sync(CommandContext& ctx, std::vector<std
   }
 
   static hyprshare::sync::FileSyncService service;
+  // Every CLI call is a fresh process; rehydrate rules from disk first.
+  load_rules(ctx, service);
 
   if (args[1] == "start") {
     auto result = service.start();
@@ -67,6 +155,7 @@ std::expected<int, std::string> handle_sync(CommandContext& ctx, std::vector<std
       std::cerr << "error: " << result.error() << "\n";
       return 1;
     }
+    save_rules(ctx, service);
     std::cout << "Sync rule added: " << rule.id << "\n";
     if (rule.remote_address.empty()) {
       std::cout << "  No peer address set; the rule needs --address <host:port> to transfer anything.\n";
@@ -86,6 +175,7 @@ std::expected<int, std::string> handle_sync(CommandContext& ctx, std::vector<std
       std::cerr << "error: " << result.error() << "\n";
       return 1;
     }
+    save_rules(ctx, service);
     std::cout << "Sync rule removed\n";
     return 0;
   }
@@ -96,10 +186,10 @@ std::expected<int, std::string> handle_sync(CommandContext& ctx, std::vector<std
       std::cout << "[";
       for (std::size_t i = 0; i < rules.size(); ++i) {
         if (i > 0) std::cout << ",";
-        std::cout << "{\"id\":\"" << rules[i].id
-                  << "\",\"name\":\"" << rules[i].name
-                  << "\",\"remote_device_id\":\"" << rules[i].remote_device_id
-                  << "\",\"remote_address\":\"" << rules[i].remote_address << "\"}";
+        std::cout << "{\"id\":\"" << json_escape(rules[i].id)
+                  << "\",\"name\":\"" << json_escape(rules[i].name)
+                  << "\",\"remote_device_id\":\"" << json_escape(rules[i].remote_device_id)
+                  << "\",\"remote_address\":\"" << json_escape(rules[i].remote_address) << "\"}";
       }
       std::cout << "]\n";
     } else {
