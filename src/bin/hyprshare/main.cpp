@@ -258,6 +258,11 @@ hyprshare session receive <id> [--to <path>] [--json])");
 
   const hyprshare::platform::Paths paths = hyprshare::platform::resolve_paths();
 
+  if (!args.empty() && (args[0] == "--version" || args[0] == "-V")) {
+    std::cout << HYPRSHARE_VERSION << "\n";
+    return 0;
+  }
+
   if (args.empty() || args[0] == "help" || args[0] == "--help") {
     registry.print_usage();
     with_plugin_commands(paths, [](const std::vector<hyprshare::plugin::PluginCommand>& commands) {
