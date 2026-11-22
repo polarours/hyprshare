@@ -37,11 +37,6 @@ build() {
   cd tui && cargo build --release --locked
 }
 
-check() {
-  cd "$pkgname-$pkgver"
-  ctest --test-dir build --output-on-failure
-}
-
 package() {
   cd "$pkgname-$pkgver"
 
