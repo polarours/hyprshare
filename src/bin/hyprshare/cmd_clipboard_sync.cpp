@@ -1,13 +1,54 @@
 #include "cmd_clipboard_sync.hpp"
 
+#include <chrono>
+#include <csignal>
+#include <fstream>
 #include <iostream>
+#include <thread>
+#include <unistd.h>
 
 #include "command_utils.hpp"
 #include "output_json.hpp"
 #include "output_text.hpp"
 #include "hyprshare/sync/clipboard_sync.hpp"
+#include "hyprshare/util/string.hpp"
 
 namespace hyprshare::cli {
+
+namespace {
+
+// The watcher runs in a detached child process so it survives the CLI call
+// that started it. A pid file under the state dir lets status/stop find it.
+std::filesystem::path daemon_pid_file(const CommandContext& ctx) {
+  return ctx.paths.state_dir / "clipboard-sync" / "daemon.pid";
+}
+
+std::string self_executable() {
+  char buffer[4096] = {};
+  const ssize_t length = readlink("/proc/self/exe", buffer, sizeof(buffer) - 1);
+  if (length > 0) {
+    return std::string(buffer, static_cast<std::size_t>(length));
+  }
+  return "hyprshare";
+}
+
+int read_daemon_pid(const CommandContext& ctx) {
+  std::ifstream file(daemon_pid_file(ctx));
+  int pid = -1;
+  file >> pid;
+  return pid;
+}
+
+bool process_alive(int pid) {
+  return pid > 0 && kill(pid, 0) == 0;
+}
+
+void clear_daemon_pid(const CommandContext& ctx) {
+  std::error_code error;
+  std::filesystem::remove(daemon_pid_file(ctx), error);
+}
+
+}  // namespace
 
 std::expected<int, std::string> handle_clipboard_sync(CommandContext& ctx, std::vector<std::string>& args) {
   if (args.size() < 2) {
@@ -17,27 +58,66 @@ std::expected<int, std::string> handle_clipboard_sync(CommandContext& ctx, std::
 
   static hyprshare::sync::ClipboardSyncService service;
 
-  if (args[1] == "start") {
+  // Internal entry point: the detached process that actually runs the watcher.
+  // Kept out of --help; `start` spawns this with spawn_detached_shell.
+  if (args[1] == "_daemon") {
     auto result = service.start();
     if (!result.has_value()) {
       std::cerr << "error: " << result.error() << "\n";
       return 1;
     }
-    std::cout << "Clipboard sync service started" << std::endl;
+    while (service.is_running()) {
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+    return 0;
+  }
+
+  if (args[1] == "start") {
+    const int existing = read_daemon_pid(ctx);
+    if (process_alive(existing)) {
+      if (ctx.json) std::cout << "{\"status\":\"already_running\",\"pid\":" << existing << "}\n";
+      else std::cout << "Clipboard sync is already running (pid " << existing << ")\n";
+      return 0;
+    }
+    clear_daemon_pid(ctx);
+
+    const std::string command =
+      util::shell_quote(self_executable()) + " clipboard-sync _daemon";
+    auto pid = ctx.runner.spawn_detached_shell(command);
+    if (!pid.has_value()) {
+      std::cerr << "error: " << pid.error() << "\n";
+      return 1;
+    }
+    const auto path = daemon_pid_file(ctx);
+    std::error_code error;
+    std::filesystem::create_directories(path.parent_path(), error);
+    std::ofstream file(path);
+    file << *pid << "\n";
+    if (ctx.json) std::cout << "{\"status\":\"started\",\"pid\":" << *pid << "}\n";
+    else std::cout << "Clipboard sync service started (pid " << *pid << ")\n";
     return 0;
   }
 
   if (args[1] == "stop") {
-    service.stop();
+    const int pid = read_daemon_pid(ctx);
+    if (process_alive(pid)) {
+      kill(pid, SIGTERM);
+    }
+    clear_daemon_pid(ctx);
     std::cout << "Clipboard sync service stopped\n";
     return 0;
   }
 
   if (args[1] == "status") {
+    const int pid = read_daemon_pid(ctx);
+    const bool running = process_alive(pid);
+    if (!running) clear_daemon_pid(ctx);
     if (ctx.json) {
-      std::cout << "{\"status\":\"" << (service.is_running() ? "running" : "stopped") << "\"}\n";
+      std::cout << "{\"status\":\"" << (running ? "running" : "stopped") << "\"";
+      if (running) std::cout << ",\"pid\":" << pid;
+      std::cout << "}\n";
     } else {
-      std::cout << "Clipboard sync: " << (service.is_running() ? "running" : "stopped") << "\n";
+      std::cout << "Clipboard sync: " << (running ? "running" : "stopped") << "\n";
     }
     return 0;
   }
