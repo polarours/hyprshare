@@ -42,8 +42,8 @@ class HyprshareClient: ObservableObject {
     private let queue = DispatchQueue(label: "com.hyprshare.client")
     private var readBuffer = Data()
 
-    private let host: String
-    private let port: UInt16
+    private var host: String
+    private var port: UInt16
 
     init(host: String = "192.168.1.100", port: UInt16 = 28556) {
         self.host = host

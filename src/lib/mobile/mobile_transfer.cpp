@@ -283,7 +283,7 @@ void MobileTransferServer::handle_file_offer(
   const std::string& payload,
   std::string& buffer) {
   const auto name = extract_quoted(payload, "name");
-  const auto size = extract_size(payload);
+  auto size = extract_size(payload);
 
   auto safe_name = std::filesystem::path(name).filename().string();
   if (safe_name.empty() || safe_name == "." || safe_name == "..") {
@@ -304,14 +304,29 @@ void MobileTransferServer::handle_file_offer(
   buffer.clear();
 
   std::array<char, 65536> chunk{};
+  bool header_skipped = false;
   while (payload_bytes.size() < size) {
-    const auto remaining = size - payload_bytes.size();
-    const auto to_copy = std::min(remaining, chunk.size());
-    const auto n = platform::recv_retry(client_fd, chunk.data(), to_copy);
+    // Read a full chunk, not just `remaining`: clients prepend a JSON header
+    // line, and limiting the read to the declared file size can split that
+    // header across reads so it can never be recognized.
+    const auto n = platform::recv_retry(client_fd, chunk.data(), chunk.size());
     if (n <= 0) {
       break;
     }
     payload_bytes.append(chunk.data(), static_cast<std::size_t>(n));
+
+    // Newer clients send a `{"type":"file_data",...}` control line before the
+    // raw bytes. Strip it from the stream before treating bytes as file data.
+    if (!header_skipped && payload_bytes.find("\"type\":\"file_data\"") != std::string::npos) {
+      const auto newline = payload_bytes.find('\n');
+      if (newline != std::string::npos) {
+        const auto header = payload_bytes.substr(0, newline);
+        const auto declared = extract_size(header);
+        if (declared > 0) size = declared;
+        payload_bytes.erase(0, newline + 1);
+      }
+      header_skipped = true;
+    }
   }
 
   const auto destination = inbox_dir() / safe_name;

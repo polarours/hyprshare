@@ -110,8 +110,10 @@ class HyprshareClient(
             addProperty("protocol_version", "1.0")
         }
         sendRawMessage("discover", payload)
+        // Responses are envelope messages: {"type":..., "payload":{...}}.
         val response = readRawMessage()
-        val services = response.getAsJsonArray("services") ?: return@withContext emptyList()
+        val body = response.getAsJsonObject("payload") ?: JsonObject()
+        val services = body.getAsJsonArray("services") ?: return@withContext emptyList()
         services.map { element ->
             val obj = element.asJsonObject
             DiscoveredDevice(
@@ -131,7 +133,8 @@ class HyprshareClient(
             }
             sendRawMessage("auth_request", payload)
             val response = readRawMessage()
-            response.get("status")?.asString == "ok"
+            val body = response.getAsJsonObject("payload") ?: JsonObject()
+            body.get("status")?.asString == "ok"
         }
 
     suspend fun sendCapabilities(capabilities: Map<String, Boolean>): Boolean =
