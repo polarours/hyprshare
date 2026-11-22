@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Fixed installed data-directory resolution**: the binary used to hardcode
+  the build-time source path as its data directory, so an installed package
+  looked for backends/adapters in a nonexistent build dir. It now prefers the
+  installed data dir (`/usr/share/hyprshare`) when present, falling back to the
+  source tree only in development builds.
 - **Fixed front-end contract bugs**: Tools file search now passes `--json` and
   reads the `{results}` envelope; the Network panel reads real
   `is_up`/`netmask`/`gateway` fields; Settings backend badges derive from

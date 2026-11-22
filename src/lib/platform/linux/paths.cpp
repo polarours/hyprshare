@@ -18,7 +18,17 @@ std::filesystem::path env_path(const char* name, const std::filesystem::path& fa
 Paths resolve_paths() {
   const std::filesystem::path home = env_path("HOME", std::filesystem::current_path());
   const std::filesystem::path source_dir = HYPRSHARE_SOURCE_DIR;
-  const std::filesystem::path default_data_dir = source_dir / "data";
+  const std::filesystem::path installed_dir = HYPRSHARE_INSTALLED_DATADIR;
+
+  // Use the installed data directory when present (a real system install),
+  // otherwise fall back to the source tree for development builds. This keeps
+  // the build-time source path out of installed binaries.
+  std::filesystem::path default_data_dir = source_dir / "data";
+  std::error_code ec;
+  if (std::filesystem::exists(installed_dir / "backends", ec) ||
+      std::filesystem::exists(installed_dir / "data", ec)) {
+    default_data_dir = installed_dir;
+  }
 
   Paths paths;
   paths.source_dir = source_dir;
