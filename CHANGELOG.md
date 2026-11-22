@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Added a GitHub Pages landing page** (`site/`, deployed by `.github/workflows/pages.yml`)
+  at `polarours.github.io/hyprshare` — a showcase with the real screenshot
+  wall, feature cards and install commands, matching the README style.
 - **Published to the AUR as `hyprshare-git`** (tracks `master`): one package
   provides the CLI/daemon, TUI, desktop GUI and web UI. The main README and
   packaging notes now point to it.
