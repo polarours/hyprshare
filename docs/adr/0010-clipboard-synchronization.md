@@ -2,8 +2,9 @@
 
 ## Status
 
-Accepted. Partially implemented: the service polls the system clipboard and
-persists a history, but it does not yet exchange content with a remote device.
+Accepted. The service polls the system clipboard, persists a history, and
+exchanges content with a remote device over the HTTP inbox (`clipboard-sync
+send|receive` and `clipboard write|read`). Cross-device sync is implemented.
 
 ## Context
 

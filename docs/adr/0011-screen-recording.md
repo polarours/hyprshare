@@ -2,9 +2,10 @@
 
 ## Status
 
-Accepted. The capture pipeline is not implemented: no frames are produced and no
-output file is written. `hyprshare record start` reports this instead of claiming a
-recording is running.
+Accepted. Implemented: screen capture uses xdg-desktop-portal + PipeWire with
+an OBS virtual-camera fallback, and frames are encoded to MP4/WebM/MKV with
+ffmpeg. On hosts without a Wayland portal or PipeWire, `record start` reports
+the missing capability instead of claiming a recording is running.
 
 ## Context
 

@@ -14,7 +14,7 @@ We implemented a Tauri-based desktop application with:
 - Rust backend for system integration
 - Web frontend for UI
 - Native window management
-- System tray integration
+- System tray integration (planned, not yet implemented)
 
 ## Consequences
 

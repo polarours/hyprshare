@@ -22,10 +22,22 @@ function Devices() {
   const [self, setSelf] = useState<SelfIdentity | null>(null)
   const [peers, setPeers] = useState<Peer[]>([])
   const [discovery, setDiscovery] = useState<Discovery | null>(null)
+  const [browseResult, setBrowseResult] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [invitePath, setInvitePath] = useState('')
   const [pairPath, setPairPath] = useState('')
+
+  const browseNetwork = async () => {
+    setError(null)
+    setBrowseResult(null)
+    try {
+      const result = await runJson<unknown>(['discovery', 'browse', '--json'], 0)
+      setBrowseResult(JSON.stringify(result, null, 2))
+    } catch (cause) {
+      setBrowseResult(cause instanceof Error ? cause.message : String(cause))
+    }
+  }
 
   const load = async () => {
     try {
@@ -156,10 +168,15 @@ function Devices() {
           />
         )}
         <div className="row" style={{ justifyContent: 'flex-end' }}>
-          <ActionButton variant="secondary" icon="refresh" onClick={() => act(['discovery', 'browse', '--json'], 'Discovery refreshed')}>
+          <ActionButton variant="secondary" icon="refresh" onClick={browseNetwork}>
             Browse network
           </ActionButton>
         </div>
+        {browseResult && (
+          <div className="hint-text mono" style={{ whiteSpace: 'pre-wrap', maxHeight: 180, overflow: 'auto' }}>
+            {browseResult}
+          </div>
+        )}
       </Group>
     </>
   )
