@@ -139,13 +139,18 @@ Every front-end is a subprocess caller of the CLI.
 ## 📦 Install
 
 Arch Linux — one AUR package provides **everything** (CLI, daemon, TUI, desktop
-GUI, web UI):
+GUI, web UI). The `-git` package tracks the latest development code on `master`:
 
 ```bash
-yay -S hyprshare
+yay -S hyprshare-git
 ```
 
-See [packaging/arch/](packaging/arch/README.md) for details and manual installation.
+> [!NOTE]
+> hyprshare is still in early development. The AUR package builds from the
+> latest `master`, so updates arrive as soon as you pull — expect occasional
+> breakage. See [Running locally](docs/running-locally.md) to build from source.
+
+See [packaging/arch/](packaging/arch/README.md) for packaging details.
 
 ## 🚀 Quick start
 

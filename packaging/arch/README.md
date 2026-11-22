@@ -1,6 +1,6 @@
 # Packaging Notes For Arch / AUR
 
-hyprshare ships as **one AUR package**: install `hyprshare` and you get all
+hyprshare ships as **one AUR package**: install `hyprshare-git` and you get all
 four entry points from the same build:
 
 | Entry point | Command | What it is |
@@ -14,16 +14,24 @@ All front-ends call the same CLI, so they cannot disagree with each other.
 
 ## Publishing
 
-The PKGBUILD here is filled in with the real upstream URL and tag source.
-When publishing:
+**Published**: [`hyprshare-git`](https://aur.archlinux.org/packages/hyprshare-git)
+tracks `master`. Its AUR repo is `ssh://aur@aur.archlinux.org/hyprshare-git.git`.
 
-1. After tagging `v<pkgver>` upstream, download the tarball, run `sha256sum`,
-   and replace `SKIP` in `sha256sums`.
-2. Copy `PKGBUILD` into the `hyprshare` AUR repo (as `PKGBUILD`).
+The published `-git` PKGBUILD lives in the AUR repo, not in this directory.
+This directory's `PKGBUILD` is the **release-tarball** variant (for a future
+stable `hyprshare` package): it downloads `v$pkgver.tar.gz` and pins a
+`sha256sums`. To publish that variant instead:
+
+1. Tag `v<pkgver>` upstream, download the tarball, run `sha256sum`, and put the
+   hash in `sha256sums`.
+2. Copy `PKGBUILD` into a `hyprshare` AUR repo.
 3. Generate `.SRCINFO`: `makepkg --printsrcinfo > .SRCINFO`.
-4. Verify locally with `makepkg` (it builds all four entry points and runs
-   the 13-suite CTest check).
-5. Commit and push to the AUR (needs an AUR account with an SSH key).
+4. Verify: `makepkg -s` (builds all four entry points, runs the 13-suite check).
+5. Commit and push to AUR (needs an AUR account with an SSH key).
+
+To build the `-git` variant locally, use the PKGBUILD published on AUR: its
+`source` is `git+https://github.com/polarours/hyprshare.git`, `sha256sums=('SKIP')`,
+and `pkgver()` reads the version from `CMakeLists.txt` plus the git revision.
 
 ## Build notes
 
