@@ -193,6 +193,8 @@ target_link_libraries(
   hyprshare_mobile
   PUBLIC
     hyprshare_build_config
+    hyprshare_platform_linux
+    OpenSSL::Crypto
 )
 
 add_library(
@@ -622,6 +624,18 @@ if(HYPRSHARE_BUILD_TESTS)
       hyprshare_update
   )
   add_test(NAME hyprshare_update_tests COMMAND hyprshare_update_tests)
+
+  add_executable(
+    hyprshare_mobile_tests
+    tests/unit/mobile_tests.cpp
+  )
+  target_link_libraries(
+    hyprshare_mobile_tests
+    PRIVATE
+      hyprshare_build_config
+      hyprshare_mobile
+  )
+  add_test(NAME hyprshare_mobile_tests COMMAND hyprshare_mobile_tests)
 
   add_executable(
     hyprshare_web_tests

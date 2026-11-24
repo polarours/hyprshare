@@ -16,6 +16,7 @@ struct MobileClient {
   std::string device_id;
   std::string device_name;
   std::string address;
+  std::vector<std::string> capabilities;
   int fd = -1;
 };
 
@@ -54,6 +55,13 @@ class MobileTransferServer {
   void handle_discover(int client_fd);
   void handle_auth(int client_fd, const std::string& payload);
   void handle_file_offer(int client_fd, const std::string& payload, std::string& buffer);
+  void handle_ping(int client_fd);
+  void handle_capabilities(int client_fd, const std::string& payload);
+  void handle_clipboard_sync(int client_fd, const std::string& payload);
+  void handle_file_complete(int client_fd, const std::string& payload);
+  void handle_screen_control(int client_fd, const std::string& type);
+  void handle_input_event(int client_fd);
+  MobileClient* client_for_fd(int client_fd);
 
   uint16_t port_;
   int server_fd_ = -1;

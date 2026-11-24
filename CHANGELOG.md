@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **The mobile server now answers every message type the Android and iOS
+  clients send** instead of silently ignoring most of them: `ping`→`pong`,
+  `capabilities` (stored per client and echoed with a count), `clipboard_sync`
+  (really written through `wl-copy`), and `file_complete` (verifies the
+  received file's size and SHA-256, answering `ok`/`mismatch`/`missing`).
+  `screen_start`/`screen_stop` and `input_event` answer an explicit
+  `unsupported` status, because streaming frames into this socket and injecting
+  input (needs `ydotool`/`wtype`) are not implemented — clients can now tell
+  "not supported" apart from "no reply".
+- **`discover_response` advertises the host's real LAN IPv4** instead of the
+  wildcard `0.0.0.0`, which no client can connect to.
+- **New `hyprshare_mobile_tests` suite** (14th) drives the protocol over a real
+  socket: discovery, auth, keepalive, capabilities, a full file transfer, and
+  the size/SHA-256 mismatch paths.
 - **Added a GitHub Pages landing page** (`site/`, deployed by `.github/workflows/pages.yml`)
   at `polarours.github.io/hyprshare` — a showcase with the real screenshot
   wall, feature cards and install commands, matching the README style.

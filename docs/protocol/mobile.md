@@ -18,6 +18,29 @@ All messages use newline-delimited JSON:
 {"type":"message_type","payload":{...}}\n
 ```
 
+## Server implementation status
+
+The desktop server (`hyprshare mobile serve`) implements these messages today.
+Anything marked *unsupported* is answered with an explicit status instead of
+being dropped, so a client can tell the difference between "not implemented"
+and "no reply yet".
+
+| Message | Direction | Server behavior |
+|---|---|---|
+| `discover` / `discover_response` | both | Answered with the host's real LAN IPv4 and the listening port |
+| `auth_request` / `auth_response` | both | Client registered; the response carries `status` only (no session token yet) |
+| `capabilities` / `capabilities_ack` | both | Stored per client and echoed back with a count |
+| `ping` / `pong` | both | Answered with a millisecond timestamp |
+| `file_offer` / `file_accept` | both | Accepted; the transfer is written into `~/.local/share/hyprshare/inbox` |
+| `file_data` | mobile → desktop | A preceding JSON header line is stripped so it never reaches the file |
+| `file_complete` / `file_complete_ack` | both | Verifies the received file's size and SHA-256; answers `ok`, `mismatch`, `missing` or `error` |
+| `clipboard_sync` / `clipboard_ack` | both | Writes the text through `wl-copy`; answers `error` with a reason when that fails |
+| `screen_start` / `screen_stop` / `screen_frame` | both | **Unsupported** — answered with `screen_status: unsupported` |
+| `input_event` / `cursor_update` | mobile → desktop | **Unsupported** — answered with `input_ack: unsupported` (needs `ydotool` or `wtype`) |
+
+`hyprshare_mobile_tests` exercises this contract over a real socket, so the
+table above is regression-tested rather than aspirational.
+
 ## Message Types
 
 ### Discovery
@@ -31,8 +54,11 @@ Mobile → Desktop: Request device discovery
 #### `discover_response`
 Desktop → Mobile: Available services
 ```json
-{"type":"discover_response","payload":{"services":[{"name":"hyprshare","host":"192.168.1.100","port":28556,"capabilities":["file_transfer","screen_share","remote_control"]}]}}
+{"type":"discover_response","payload":{"services":[{"name":"hyprshare","host":"192.168.1.100","port":28556,"capabilities":["file_transfer","clipboard_sync"]}]}}
 ```
+
+`host` is the host's real LAN IPv4 address (never the wildcard `0.0.0.0`), so a
+client can connect straight from the phone.
 
 ### Authentication
 
@@ -45,8 +71,11 @@ Mobile → Desktop: Authentication request
 #### `auth_response`
 Desktop → Mobile: Authentication result
 ```json
-{"type":"auth_response","payload":{"status":"ok","session_token":"...","expires_in":3600}}
+{"type":"auth_response","payload":{"status":"ok"}}
 ```
+
+`status` is the only field sent today; `session_token` / `expires_in` are not
+implemented yet.
 
 ### File Transfer
 
