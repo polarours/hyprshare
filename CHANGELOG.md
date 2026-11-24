@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **`remote status` is no longer hardcoded.** `remote serve` now starts a real
+  detached server (pid + port files), `status` probes the pid and reports the
+  real pid/port plus a count of input events, and a new `remote stop` terminates
+  it and clears the stale state. Both text and JSON output agree on the state.
+- **Remote input events are persisted** to `~/.local/state/hyprshare/remote/input.log`
+  instead of being printed to a terminal nobody reads. Injection still needs an
+  external backend (`ydotool`/`wtype`/`dotool`); `status` reports the detected
+  backend and says `none` rather than claiming an injection happened.
+- **Fixed two real socket bugs in the remote server found by a live probe**:
+  several control messages in one TCP packet used to be dropped (only the first
+  line was handled), and a malformed coordinate could throw and kill the
+  detached server. Both are covered by the CLI dispatch suite.
 - **The mobile server now answers every message type the Android and iOS
   clients send** instead of silently ignoring most of them: `ping`→`pong`,
   `capabilities` (stored per client and echoed with a count), `clipboard_sync`

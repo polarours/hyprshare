@@ -191,7 +191,7 @@ hyprshare session receive <id> [--to <path>] [--json])");
     "hyprshare mobile serve [--port <port>]\n"
     "hyprshare mobile send <device-id> <file-path>");
   registry.register_command("remote", hyprshare::cli::handle_remote,
-    "hyprshare remote <serve|status>\n"
+    "hyprshare remote <serve|status|stop>\n"
     "hyprshare remote serve [--port <port>]");
   registry.register_command("shell", hyprshare::cli::handle_shell,
     "hyprshare shell");

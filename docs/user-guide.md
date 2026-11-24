@@ -373,12 +373,22 @@ hyprshare mobile serve --port 28556
 # Send a file to a mobile device
 hyprshare mobile send <device-id> ./photo.jpg
 
-# Start the remote control server
+# Start the remote control server in the background
 hyprshare remote serve --port 28557
 
-# Show remote control status
+# Show the real pid/port, recorded input-event count and injection backend
 hyprshare remote status
+hyprshare remote status --json
+
+# Stop it (clears the pid and port files)
+hyprshare remote stop
 ```
+
+Incoming input events are appended to
+`~/.local/state/hyprshare/remote/input.log`. Input injection needs `ydotool`,
+`wtype` or `dotool` installed on the host; when none is found, `status` reports
+`input_backend: none` and events are **recorded only** — they are not silently
+claimed to have been injected.
 
 ## Cloud Sync and Profiles
 

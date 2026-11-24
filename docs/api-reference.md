@@ -116,8 +116,9 @@
 |---------|-------------|
 | `hyprshare mobile serve` | Start the mobile transfer server |
 | `hyprshare mobile send <device-id> <file>` | Send a file to a mobile device |
-| `hyprshare remote serve` | Start the remote control server |
-| `hyprshare remote status` | Show remote control status |
+| `hyprshare remote serve [--port <port>]` | Start the remote control server as a detached process |
+| `hyprshare remote status [--json]` | Show pid, port, recorded-event count and injection backend |
+| `hyprshare remote stop` | Stop the server and clear its pid/port files |
 
 ### Networking and TLS
 

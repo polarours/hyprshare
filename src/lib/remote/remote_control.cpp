@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <cerrno>
+#include <charconv>
 #include <cstring>
 #include <iostream>
 #include <mutex>
@@ -15,6 +16,19 @@
 namespace hyprshare::remote {
 
 namespace {
+
+// `std::stoi` throws on malformed coordinates, which would unwind the detached
+// server's client thread and take the service down on one bad phone packet.
+int32_t parse_coordinate(const std::string& line, const std::string& key) {
+  const auto pos = line.find("\"" + key + "\":");
+  if (pos == std::string::npos) {
+    return 0;
+  }
+  const auto digits = line.substr(pos + key.size() + 3);
+  int32_t value = 0;
+  const auto result = std::from_chars(digits.data(), digits.data() + digits.size(), value);
+  return result.ec == std::errc{} ? value : 0;
+}
 
 bool send_all(int fd, const void* data, std::size_t size) {
   const auto* bytes = static_cast<const char*>(data);
@@ -187,10 +201,16 @@ void RemoteControlServer::handle_client(const int client_fd) {
     buffer[received] = '\0';
     accumulated += buffer;
 
-    const auto newline_pos = accumulated.find('\n');
-    if (newline_pos != std::string::npos) {
+    // Drain EVERY complete control line. A single recv can carry several
+    // messages; handling only one left the rest stuck in `accumulated` until
+    // another packet arrived, so events were silently dropped.
+    for (;;) {
+      const auto newline_pos = accumulated.find('\n');
+      if (newline_pos == std::string::npos) {
+        break;
+      }
       const auto line = accumulated.substr(0, newline_pos);
-      accumulated = accumulated.substr(newline_pos + 1);
+      accumulated.erase(0, newline_pos + 1);
 
       if (line.find("\"type\":\"input_event\"") != std::string::npos) {
         InputEvent event;
@@ -199,25 +219,20 @@ void RemoteControlServer::handle_client(const int client_fd) {
         if (type_pos != std::string::npos) {
           const auto start = type_pos + 14;
           const auto end = line.find('"', start);
-          const auto type_str = line.substr(start, end - start);
-          if (type_str == "touch") {
-            event.type = InputEventType::Touch;
-          } else if (type_str == "keyboard") {
-            event.type = InputEventType::Keyboard;
-          } else if (type_str == "gesture") {
-            event.type = InputEventType::Gesture;
+          if (end != std::string::npos) {
+            const auto type_str = line.substr(start, end - start);
+            if (type_str == "touch") {
+              event.type = InputEventType::Touch;
+            } else if (type_str == "keyboard") {
+              event.type = InputEventType::Keyboard;
+            } else if (type_str == "gesture") {
+              event.type = InputEventType::Gesture;
+            }
           }
         }
 
-        const auto x_pos = line.find("\"x\":");
-        if (x_pos != std::string::npos) {
-          event.x = std::stoi(line.substr(x_pos + 4));
-        }
-
-        const auto y_pos = line.find("\"y\":");
-        if (y_pos != std::string::npos) {
-          event.y = std::stoi(line.substr(y_pos + 4));
-        }
+        event.x = parse_coordinate(line, "x");
+        event.y = parse_coordinate(line, "y");
 
         if (input_callback_) {
           input_callback_(event);

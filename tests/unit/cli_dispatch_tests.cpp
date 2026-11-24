@@ -335,6 +335,39 @@ int main(int argc, char** argv) {
     system(("pkill -f 'hyprshare web serve --port " + web_port + "' > /dev/null 2>&1").c_str());
   }
 
+  // `remote status` used to print a hardcoded "not running" even while a
+  // server was alive. Exercise the real start/status/stop state transition.
+  {
+    const std::string remote_port = "28984";
+
+    const auto before = run_hyprshare(binary, "remote status --json");
+    expect(before.exit_code == 0, "`remote status --json` should succeed");
+    expect(before.output.find("\"status\":\"not_running\"") != std::string::npos,
+      "remote status should report not_running when no daemon exists: " + before.output);
+
+    const auto started = run_hyprshare(binary, "remote serve --port " + remote_port + " --json");
+    expect(started.output.find("\"status\":\"started\"") != std::string::npos,
+      "`remote serve` should report a real detached process: " + started.output);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+
+    const auto during = run_hyprshare(binary, "remote status --json");
+    expect(during.output.find("\"status\":\"running\"") != std::string::npos,
+      "remote status should reflect the running daemon: " + during.output);
+    expect(during.output.find("\"port\":" + remote_port) != std::string::npos,
+      "remote status should report the actual listening port: " + during.output);
+
+    const auto stopped = run_hyprshare(binary, "remote stop --json");
+    expect(stopped.output.find("\"status\":\"stopped\"") != std::string::npos,
+      "`remote stop` should report the daemon it stopped: " + stopped.output);
+
+    const auto after = run_hyprshare(binary, "remote status --json");
+    expect(after.output.find("\"status\":\"not_running\"") != std::string::npos,
+      "remote status should report not_running after stop: " + after.output);
+    expect(after.output.find("\"port\":") == std::string::npos,
+      "remote status must not expose a stale port after stop: " + after.output);
+  }
+
   // `share file` stages a share session by default, so the transfer chain is
   // one command away; --dry-run only inspects the manifest.
   {
