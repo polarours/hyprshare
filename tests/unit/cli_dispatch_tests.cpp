@@ -395,6 +395,31 @@ int main(int argc, char** argv) {
       "`share file --dry-run` should print the manifest: " + inspected.output);
   }
 
+  // The desktop app parses --json output, so a command that silently falls
+  // back to prose breaks the UI even though its exit code is 0. These ten
+  // commands used to do exactly that.
+  {
+    const std::string json_commands[] = {
+      "cloud configure probe --type local --endpoint " + temp_root.string() + "/cloud --json",
+      "profile create jsonprobe --json",
+      "web status --json",
+      "batch run-commands true --json",
+      "sync add " + share_file + " probe-device --address 127.0.0.1:9 --json",
+      "monitor start --json",
+      "monitor status --json",
+      "monitor stop --json",
+      "profiling start jsonprobe --json",
+      "profiling stop jsonprobe --json",
+      "profiling clear --json",
+    };
+    for (const auto& args : json_commands) {
+      const RunResult result = run_hyprshare(binary, args);
+      const auto first = result.output.empty() ? '\0' : result.output.front();
+      expect(result.exit_code == 0 && (first == '{' || first == '['),
+        "`" + args + "` should emit JSON: " + result.output);
+    }
+  }
+
   // `share clipboard` follows the same contract: the default stages a
   // session, --dry-run inspects the text only. The clipboard write/read here
   // also guards the wl-clipboard fd bug (stdin must stay a valid fd).
