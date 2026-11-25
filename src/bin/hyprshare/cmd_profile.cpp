@@ -119,6 +119,15 @@ std::expected<int, std::string> handle_profile(CommandContext& ctx, std::vector<
       }
     }
 
+    if (ctx.json) {
+      std::cout << "{\"status\":\"created\",\"name\":\"" << json_escape(args[2]) << "\"";
+      if (!created_id.empty()) {
+        std::cout << ",\"id\":\"" << json_escape(created_id) << "\"";
+      }
+      std::cout << "}\n";
+      return 0;
+    }
+
     std::cout << "Profile created: " << args[2] << "\n";
     if (!created_id.empty()) {
       std::cout << "  Id: " << created_id << "\n";

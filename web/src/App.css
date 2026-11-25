@@ -74,6 +74,9 @@ body {
   flex-direction: column;
   height: 100vh;
   overflow: hidden;
+  background:
+    radial-gradient(120% 80% at 92% -10%, rgba(0, 113, 227, 0.07), transparent 60%),
+    var(--bg);
 }
 
 .titlebar {
@@ -212,13 +215,14 @@ body {
 }
 
 .nav-item.active {
-  background: var(--accent);
-  color: #fff;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+  background: rgba(0, 113, 227, 0.10);
+  color: var(--accent);
+  font-weight: 600;
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 
 .nav-item.active svg {
-  color: #fff;
+  color: var(--accent);
 }
 
 /* Slim, self-drawn scrollbar so the chrome matches the rest of the UI. */
@@ -298,17 +302,25 @@ body {
 }
 
 .group-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--ink-2);
-  margin: 0 0 10px 16px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 0 0 10px 0;
 }
 
 .group-body {
   background: var(--card);
+  border: 1px solid var(--line);
   border-radius: var(--radius-card);
   box-shadow: var(--shadow);
   overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.group-body:hover {
+  border-color: rgba(0, 113, 227, 0.18);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.04), 0 14px 32px rgba(0, 0, 0, 0.08);
 }
 
 .row {
@@ -371,17 +383,42 @@ body {
 
 /* Inline text action used by empty states so a row is never a dead end. */
 .row-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: 13px;
   font-weight: 600;
-  color: var(--accent);
+  color: #fff;
   text-decoration: none;
-  padding: 6px 12px;
-  border-radius: 999px;
-  background: var(--chip-bg);
+  padding: 9px 16px;
+  border-radius: var(--radius-btn);
+  background: linear-gradient(180deg, var(--accent-hover), var(--accent));
+  box-shadow: 0 1px 2px rgba(0, 113, 227, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.18);
   white-space: nowrap;
 }
-.row-action:hover {
-  background: var(--toggle-bg);
+.row-action:hover { filter: brightness(1.08); }
+
+/* Inline inputs for settings-like action rows. */
+.row-inline-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 65%;
+}
+.row-inline-inputs .text-input {
+  width: auto;
+  min-width: 110px;
+  flex: 0 1 150px;
+}
+.row-inline-padded {
+  padding: 0 20px 16px 68px;
+}
+.row-inline-padded .text-input {
+  width: 100%;
+  resize: vertical;
+  flex: 1 1 100%;
 }
 
 .mono {
@@ -497,11 +534,12 @@ body {
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  background: var(--accent);
+  background: linear-gradient(180deg, var(--accent-hover), var(--accent));
   color: #fff;
-  transition: background 0.15s ease, transform 0.1s ease;
+  box-shadow: 0 1px 2px rgba(0, 113, 227, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.18);
+  transition: filter 0.15s ease, transform 0.1s ease;
 }
-.btn:hover { background: var(--accent-hover); }
+.btn:hover { filter: brightness(1.08); }
 .btn:active { transform: scale(0.97); }
 .btn:disabled { background: var(--chip-bg); color: var(--ink-3); cursor: not-allowed; transform: none; }
 .btn-secondary {

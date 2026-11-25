@@ -7,7 +7,46 @@
 
 namespace hyprshare::cli {
 
-std::expected<int, std::string> handle_batch([[maybe_unused]] CommandContext& ctx, std::vector<std::string>& args) {
+namespace {
+
+std::string batch_json_string(const std::string& value) {
+  std::string out;
+  for (const char c : value) {
+    switch (c) {
+      case '"': out += "\\\""; break;
+      case '\\': out += "\\\\"; break;
+      case '\n': out += "\\n"; break;
+      case '\r': out += "\\r"; break;
+      case '\t': out += "\\t"; break;
+      default: out.push_back(c); break;
+    }
+  }
+  return out;
+}
+
+void print_batch_result_json(
+  const std::vector<std::expected<batch::BatchResult, std::string>>& results,
+  bool failed) {
+  std::cout << "{\"results\":[";
+  for (std::size_t i = 0; i < results.size(); ++i) {
+    if (i > 0) {
+      std::cout << ",";
+    }
+    if (!results[i].has_value()) {
+      std::cout << "{\"error\":\"" << batch_json_string(results[i].error()) << "\"}";
+      continue;
+    }
+    const auto& result = *results[i];
+    std::cout << "{\"exit_code\":" << result.exit_code
+              << ",\"output\":\"" << batch_json_string(result.output)
+              << "\",\"error\":\"" << batch_json_string(result.error) << "\"}";
+  }
+  std::cout << "],\"failed\":" << (failed ? "true" : "false") << "}\n";
+}
+
+}  // namespace
+
+std::expected<int, std::string> handle_batch(CommandContext& ctx, std::vector<std::string>& args) {
   if (args.size() < 2) {
     return std::unexpected(std::string("usage: hyprshare batch <run-file|run-commands>"));
   }
@@ -56,6 +95,9 @@ std::expected<int, std::string> handle_batch([[maybe_unused]] CommandContext& ct
         std::cerr << "Command failed with exit code " << result->exit_code << "\n";
         any_failed = true;
       }
+    }
+    if (ctx.json) {
+      print_batch_result_json(results, any_failed);
     }
     return any_failed ? 1 : 0;
   }

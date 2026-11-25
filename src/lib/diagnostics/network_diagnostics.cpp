@@ -133,20 +133,35 @@ std::expected<bool, std::string> NetworkDiagnosticsRunner::test_connectivity(
     return std::unexpected("failed to create socket: " + std::string(std::strerror(errno)));
   }
 
-  sockaddr_in addr{};
-  addr.sin_family = AF_INET;
-  addr.sin_port = htons(port);
-
-  if (inet_pton(AF_INET, host.c_str(), &addr.sin_addr) != 1) {
+  // The CLI advertises `latency <host>`, so resolve names as well as literal
+  // IPv4 addresses instead of rejecting anything that is not an IP string.
+  addrinfo hints{};
+  hints.ai_family = AF_INET;
+  hints.ai_socktype = SOCK_STREAM;
+  addrinfo* resolved = nullptr;
+  const auto lookup =
+    getaddrinfo(host.c_str(), std::to_string(port).c_str(), &hints, &resolved);
+  if (lookup != 0 || resolved == nullptr) {
+    if (resolved != nullptr) {
+      freeaddrinfo(resolved);
+    }
     close(fd);
-    return std::unexpected("invalid IP address: " + host);
+    return std::unexpected("could not resolve " + host + ": " + gai_strerror(lookup));
   }
 
   timeval timeout{};
   timeout.tv_sec = 5;
   setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &timeout, sizeof(timeout));
+  setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &timeout, sizeof(timeout));
 
-  const bool connected = connect(fd, reinterpret_cast<sockaddr*>(&addr), sizeof(addr)) == 0;
+  bool connected = false;
+  for (auto* candidate = resolved; candidate != nullptr; candidate = candidate->ai_next) {
+    if (connect(fd, candidate->ai_addr, candidate->ai_addrlen) == 0) {
+      connected = true;
+      break;
+    }
+  }
+  freeaddrinfo(resolved);
   close(fd);
 
   return connected;

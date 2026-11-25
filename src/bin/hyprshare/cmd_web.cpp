@@ -15,6 +15,7 @@
 #include "output_json.hpp"
 #include "hyprshare/core/config.hpp"
 #include "hyprshare/core/inbox_history.hpp"
+#include "hyprshare/http/http_client.hpp"
 #include "hyprshare/platform/net.hpp"
 #include "hyprshare/web/multipart.hpp"
 #include "hyprshare/core/trust_store.hpp"
@@ -319,8 +320,48 @@ std::expected<int, std::string> handle_web(CommandContext& ctx, std::vector<std:
   }
 
   if (args[1] == "status") {
-    std::cout << "Web API: not running\n";
-    std::cout << "  Start it with: hyprshare web serve\n";
+    // Probe the local port instead of asserting "not running": the server runs
+    // as a separate process, so the only trustworthy signal is whether the
+    // socket answers.
+    const auto port_str = take_option(args, "--port");
+    const auto port = port_str ? static_cast<std::uint16_t>(std::stoul(*port_str) & 0xFFFFu)
+                               : static_cast<std::uint16_t>(8080);
+    const auto connection = hyprshare::platform::connect_transport_socket("127.0.0.1", port);
+    const bool running = connection.has_value();
+
+    std::string version;
+    if (running) {
+      hyprshare::http::Client client;
+      const auto response = client.get("http://127.0.0.1:" + std::to_string(port) + "/api/status");
+      if (response.has_value()) {
+        const auto& body = response->body;
+        const auto key = body.find("\"version\":\"");
+        if (key != std::string::npos) {
+          const auto start = key + 11;
+          const auto end = body.find('"', start);
+          if (end != std::string::npos) {
+            version = body.substr(start, end - start);
+          }
+        }
+      }
+    }
+
+    if (ctx.json) {
+      std::cout << "{\"running\":" << (running ? "true" : "false")
+                << ",\"host\":\"127.0.0.1\",\"port\":" << port;
+      if (!version.empty()) {
+        std::cout << ",\"version\":\"" << version << "\"";
+      }
+      std::cout << "}\n";
+    } else {
+      if (running) {
+        std::cout << "Web API: running on http://127.0.0.1:" << port << "\n";
+        std::cout << "  Open it in a browser to use the web UI\n";
+      } else {
+        std::cout << "Web API: not running on port " << port << "\n";
+        std::cout << "  Start it with: hyprshare web serve --port " << port << "\n";
+      }
+    }
     return 0;
   }
 

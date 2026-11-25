@@ -44,6 +44,21 @@ std::expected<int, std::string> handle_cloud(CommandContext& ctx, std::vector<st
     if (!result.has_value()) {
       return std::unexpected("configure failed: " + result.error());
     }
+    if (ctx.json) {
+      std::cout << "{\"status\":\"configured\",\"provider\":\"" << json_escape(config.provider)
+                << "\",\"type\":\"" << json_escape(config.type) << "\"";
+      if (config.type == hyprshare::cloud::kHttpProvider) {
+        std::cout << ",\"endpoint\":\"" << json_escape(config.endpoint) << "\"";
+        if (!config.bucket.empty()) {
+          std::cout << ",\"bucket\":\"" << json_escape(config.bucket) << "\"";
+        }
+      } else {
+        std::cout << ",\"local_store\":\"" << json_escape(client.local_store().string()) << "\"";
+      }
+      std::cout << "}\n";
+      return 0;
+    }
+
     std::cout << "Cloud configured: " << config.provider << " (" << config.type << ")\n";
     if (config.type == hyprshare::cloud::kHttpProvider) {
       std::cout << "  Endpoint: " << config.endpoint << "\n";

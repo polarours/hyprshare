@@ -114,7 +114,7 @@ int main(int argc, char** argv) {
   registry.register_command("support", hyprshare::cli::handle_support,
     "hyprshare support bundle [--to <dir>] [--app <app>] [--json]");
   registry.register_command("daemon", hyprshare::cli::handle_daemon,
-    "hyprshare daemon <status|stop|inbox list|inbox start|inbox stop>\n"
+    "hyprshare daemon <start|status|stop|inbox list|inbox start|inbox stop>\n"
     "hyprshare daemon inbox start [--host <host>] [--port <port>] [--to <dir>] [--token <token>]\n"
     "hyprshare daemon inbox stop <listener-id>");
   registry.register_command("discovery", hyprshare::cli::handle_discovery,

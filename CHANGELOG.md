@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **CLI correctness audit: ten commands now honour `--json`** (`cloud configure`,
+  `profile create`, `web status`, `batch run-commands`, `sync add`, `monitor
+  start/stop`, `profiling start/stop/clear`). Several of them emitted plain text
+  even when asked for JSON, which broke the desktop app's output parsing. String
+  values are escaped through one shared `json_escape` helper.
+- **`monitor` is now a real detached service** instead of blocking the caller
+  forever. `start` spawns a sampler that persists readings to the state dir, so
+  `status --json` from another process returns the real latest CPU/memory/disk
+  snapshot; `stop` terminates it.
+- **`profiling` state persists across processes** (a TSV store under the state
+  dir), so `start` in one call and `report`/`stop` in another actually work.
+- **New `daemon start`**: launches the shipped `hyprshared`, waits for the IPC
+  socket to answer, and records a pid file; `status --json` reports
+  `running: false` instead of erroring when the daemon is down, and `stop` waits
+  for the shutdown to complete.
+- **`audit check <id> --json` now includes warnings, skips and the check
+  objects** — previously a WARN-only check looked like an empty report.
+- **`netdiag latency <host>` resolves hostnames** via `getaddrinfo` instead of
+  rejecting anything that was not a literal IP.
+- **New desktop "Services" page** covers the six CLI areas that previously had
+  no UI at all: mobile send, remote serve/status/stop, cloud configure/upload/
+  download, app compatibility, batch commands and profiling, plus daemon
+  start/stop.
+- **Desktop visual pass**: a subtle background gradient, card borders and hover
+  lift, a restrained sidebar active state with an accent bar, gradient primary
+  buttons, uppercase group labels aligned to the cards, a real primary button
+  for the empty-state action, and per-page inline input rows.
 - **The TUI was redesigned.** It now has a branded header bar (version, device,
   ready/refreshing state), a rounded tab strip with per-page counts, metric
   meters with fixed-width bars, table headers, zebra striping, semantic

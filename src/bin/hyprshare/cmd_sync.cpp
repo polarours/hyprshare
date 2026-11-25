@@ -23,19 +23,6 @@ std::filesystem::path rules_file(const CommandContext& ctx) {
   return ctx.paths.state_dir / "sync" / "rules.jsonl";
 }
 
-std::string json_escape(const std::string& value) {
-  std::string out;
-  for (const char c : value) {
-    switch (c) {
-      case '"': out += "\\\""; break;
-      case '\\': out += "\\\\"; break;
-      case '\n': out += "\\n"; break;
-      default: out += c;
-    }
-  }
-  return out;
-}
-
 std::string json_field(const std::string& line, const std::string& key) {
   const std::string needle = "\"" + key + "\":\"";
   const auto start = line.find(needle);
@@ -156,6 +143,13 @@ std::expected<int, std::string> handle_sync(CommandContext& ctx, std::vector<std
       return 1;
     }
     save_rules(ctx, service);
+    if (ctx.json) {
+      std::cout << "{\"status\":\"added\",\"id\":\"" << json_escape(rule.id)
+                << "\",\"local_path\":\"" << json_escape(rule.local_path.string())
+                << "\",\"remote_device_id\":\"" << json_escape(rule.remote_device_id)
+                << "\",\"remote_address\":\"" << json_escape(rule.remote_address) << "\"}\n";
+      return 0;
+    }
     std::cout << "Sync rule added: " << rule.id << "\n";
     if (rule.remote_address.empty()) {
       std::cout << "  No peer address set; the rule needs --address <host:port> to transfer anything.\n";

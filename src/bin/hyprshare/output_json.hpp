@@ -19,6 +19,25 @@
 
 namespace hyprshare::cli {
 
+// Escape an arbitrary string for embedding in a hand-written JSON response.
+// CLI values (paths, names, endpoints) come from the user and may contain
+// quotes, backslashes or newlines.
+inline std::string json_escape(std::string_view value) {
+  std::string out;
+  out.reserve(value.size());
+  for (const char c : value) {
+    switch (c) {
+      case '"': out += "\\\""; break;
+      case '\\': out += "\\\\"; break;
+      case '\n': out += "\\n"; break;
+      case '\r': out += "\\r"; break;
+      case '\t': out += "\\t"; break;
+      default: out.push_back(c); break;
+    }
+  }
+  return out;
+}
+
 void print_status_json(
   const hyprshare::platform::Paths& paths,
   const hyprshare::model::DoctorReport& report,

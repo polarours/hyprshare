@@ -3,6 +3,7 @@
 #include <iostream>
 
 #include "command_utils.hpp"
+#include "output_json.hpp"
 #include "hyprshare/security/security_auditor.hpp"
 
 namespace hyprshare::cli {
@@ -80,9 +81,32 @@ std::expected<int, std::string> handle_audit(CommandContext& ctx, std::vector<st
     }
 
     if (ctx.json) {
+      // Mirror `audit run --json`: the caller needs the check objects too,
+      // otherwise a WARN check looks like an empty report (passed=0,
+      // failed=0, score=0) even though it produced a real remediation.
       std::cout << "{\"passed\":" << report->passed
                 << ",\"failed\":" << report->failed
-                << ",\"score\":" << report->score << "}\n";
+                << ",\"warnings\":" << report->warnings
+                << ",\"skipped\":" << report->skipped
+                << ",\"score\":" << report->score
+                << ",\"checks\":[";
+      for (std::size_t i = 0; i < report->checks.size(); ++i) {
+        if (i > 0) {
+          std::cout << ",";
+        }
+        const auto& check = report->checks[i];
+        const char* status_str = "skip";
+        switch (check.status) {
+          case hyprshare::security::CheckStatus::Pass: status_str = "pass"; break;
+          case hyprshare::security::CheckStatus::Fail: status_str = "fail"; break;
+          case hyprshare::security::CheckStatus::Warning: status_str = "warn"; break;
+          case hyprshare::security::CheckStatus::Skip: status_str = "skip"; break;
+        }
+        std::cout << "{\"id\":\"" << json_escape(check.id) << "\",\"name\":\""
+                  << json_escape(check.name) << "\",\"status\":\"" << status_str
+                  << "\",\"remediation\":\"" << json_escape(check.remediation) << "\"}";
+      }
+      std::cout << "]}\n";
     } else {
       for (const auto& check : report->checks) {
         std::string status_str;
