@@ -79,20 +79,32 @@ function Dashboard() {
       {health && (
         <div className="stat-grid">
           <div className="stat">
+            <div className="stat-head">
+              <span className="dot pass" />
+              <span className="stat-label">Passing</span>
+            </div>
             <div className="stat-num" style={{ color: 'var(--green)' }}>{health.pass}</div>
-            <div className="stat-label">Passing</div>
           </div>
           <div className="stat">
+            <div className="stat-head">
+              <span className="dot fail" />
+              <span className="stat-label">Failing</span>
+            </div>
             <div className="stat-num" style={{ color: health.fail ? 'var(--red)' : 'var(--ink)' }}>{health.fail}</div>
-            <div className="stat-label">Failing</div>
           </div>
           <div className="stat">
+            <div className="stat-head">
+              <span className="dot warn" />
+              <span className="stat-label">Warnings</span>
+            </div>
             <div className="stat-num" style={{ color: health.warn ? 'var(--orange)' : 'var(--ink)' }}>{health.warn}</div>
-            <div className="stat-label">Warnings</div>
           </div>
           <div className="stat">
+            <div className="stat-head">
+              <span className="dot" />
+              <span className="stat-label">Devices</span>
+            </div>
             <div className="stat-num">{peers.length}</div>
-            <div className="stat-label">Devices</div>
           </div>
         </div>
       )}
@@ -138,6 +150,7 @@ function Dashboard() {
                 <div className="row-title">No devices yet</div>
                 <div className="row-sub">Pair a peer with <code>hyprshare peer pair</code> to see it here.</div>
               </div>
+              <Link to="/devices" className="row-action">Pair a device</Link>
             </div>
           ) : (
             peers.map(peer => (
@@ -170,7 +183,9 @@ function Dashboard() {
                 .filter(result => result.status !== 'pass')
                 .map(result => (
                   <div key={result.id} className="row">
-                    <div className="row-icon"><Icon name="alert" /></div>
+                    <div className={`row-icon ${result.status === 'fail' ? 'bad' : 'warn'}`}>
+                      <Icon name={result.status === 'fail' ? 'stop' : 'alert'} />
+                    </div>
                     <div className="row-main">
                       <div className="row-title">{result.id}</div>
                       <div className="row-sub">{result.summary}</div>

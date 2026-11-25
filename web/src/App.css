@@ -214,10 +214,35 @@ body {
 .nav-item.active {
   background: var(--accent);
   color: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 
 .nav-item.active svg {
   color: #fff;
+}
+
+/* Slim, self-drawn scrollbar so the chrome matches the rest of the UI. */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--ink-3);
+  border-radius: 999px;
+  border: 3px solid transparent;
+  background-clip: content-box;
+  opacity: 0.5;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--ink-2);
+  background-clip: content-box;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ink-3) transparent;
 }
 
 .sidebar-foot {
@@ -290,12 +315,22 @@ body {
   display: flex;
   align-items: center;
   gap: 14px;
-  padding: 15px 20px;
-  min-height: 58px;
+  padding: 16px 20px;
+  min-height: 60px;
 }
 
 .row + .row {
   border-top: 1px solid var(--line);
+}
+
+/* Health rows carry the severity on the icon, not only on the right badge. */
+.row-icon.warn {
+  background: rgba(255, 149, 0, 0.13);
+  color: #b96b00;
+}
+.row-icon.bad {
+  background: rgba(255, 59, 48, 0.12);
+  color: #c0271d;
 }
 
 .row-icon {
@@ -334,6 +369,21 @@ body {
   text-align: right;
 }
 
+/* Inline text action used by empty states so a row is never a dead end. */
+.row-action {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: var(--chip-bg);
+  white-space: nowrap;
+}
+.row-action:hover {
+  background: var(--toggle-bg);
+}
+
 .mono {
   font-family: "SF Mono", ui-monospace, "JetBrains Mono", Menlo, Consolas, monospace;
   font-size: 12px;
@@ -346,6 +396,7 @@ body {
   height: 8px;
   border-radius: 50%;
   flex: 0 0 8px;
+  background: var(--ink-3);
 }
 .dot.pass { background: var(--green); }
 .dot.warn { background: var(--orange); }
@@ -378,18 +429,30 @@ body {
   background: var(--card);
   border-radius: 12px;
   box-shadow: var(--shadow);
-  padding: 18px 20px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.stat-head {
+  display: flex;
+  align-items: center;
+  gap: 7px;
 }
 .stat-num {
-  font-size: 28px;
+  font-size: 26px;
   font-weight: 700;
   letter-spacing: -0.03em;
   line-height: 1;
+  font-variant-numeric: tabular-nums;
 }
 .stat-label {
-  font-size: 12px;
-  color: var(--ink-2);
-  margin-top: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  margin: 0;
 }
 
 /* ---------- file transfer ---------- */

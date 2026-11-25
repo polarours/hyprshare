@@ -33,6 +33,17 @@ function FileTransfer() {
   const [shareResult, setShareResult] = useState<string | null>(null)
 
   const load = async () => {
+    // The browser build can read the receive directory over REST but has no
+    // route for the CLI-only status and history. Skipping those calls keeps
+    // the page from showing a red error while the panels sit on "Loading…".
+    if (!desktopAvailable()) {
+      try {
+        setInbox(await api.inbox())
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : String(cause))
+      }
+      return
+    }
     try {
       const [inboxInfo, inboxStatus, rawHistory] = await Promise.all([
         api.inbox(),
@@ -146,7 +157,15 @@ function FileTransfer() {
             />
           </>
         ) : (
-          <EmptyState icon="folder" title="Loading inbox status…" sub="Reading from the CLI." />
+          <EmptyState
+            icon="folder"
+            title={desktopAvailable() ? 'Loading inbox status…' : 'Inbox status needs the desktop app'}
+            sub={
+              desktopAvailable()
+                ? 'Reading from the CLI.'
+                : 'The browser build can still receive uploads below; detailed status is CLI-only.'
+            }
+          />
         )}
       </Group>
 

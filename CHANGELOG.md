@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **The TUI was redesigned.** It now has a branded header bar (version, device,
+  ready/refreshing state), a rounded tab strip with per-page counts, metric
+  meters with fixed-width bars, table headers, zebra striping, semantic
+  fail/warn colours, friendly empty states for every panel, and a per-page key
+  hint bar. The clipboard list gained arrow-key selection and Enter to copy an
+  entry back, and a refresh no longer blanks the screen.
+- **The desktop app finds its CLI again when launched outside a shell.** Actions
+  shelled out to `hyprshare` through PATH only, so starting the GUI from a
+  launcher (where the developer build directory is not on PATH) made every
+  action fail with "failed to run hyprshare". It now resolves, in order:
+  `HYPRSHARE_BIN`, next to the app binary, `./build/hyprshare` walking up four
+  directories, then `/usr/bin` and `/usr/local/bin`, and the error names what
+  was searched.
+- **Dashboard polish**: statistic cards put an uppercase label with a status dot
+  above a tabular number, health rows tint their icon by severity and use a
+  different glyph for failures than warnings, rows got more breathing room, the
+  active nav item lost its heavy glow, native scrollbars are restyled, and the
+  empty "Trusted devices" row links to the Devices page instead of being a dead
+  end.
+- **Browser build degrades honestly**: pages that need CLI-only data (file
+  transfer status and history) no longer show a red error next to a spinner that
+  never finishes; they say the detail is desktop-only and keep the working parts
+  usable.
 - **`remote status` is no longer hardcoded.** `remote serve` now starts a real
   detached server (pid + port files), `status` probes the pid and reports the
   real pid/port plus a count of input events, and a new `remote stop` terminates
