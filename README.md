@@ -152,16 +152,29 @@ yay -S hyprshare-git
 
 The package installs a launcher entry and a themed icon, so **hyprshare** and
 **hyprshare (terminal)** appear in your app launcher after installation. If you
-only built from source, you can register the launcher entry yourself:
+only built from source, register the launcher entry yourself — note that the
+entry must point at the binaries with **absolute paths**: launchers started from
+the compositor rarely have `~/.local/bin` (or your build directory) on `PATH`,
+and a bare `Exec=hyprshare-desktop` then silently does nothing.
 
 ```bash
-install -d ~/.local/share/applications ~/.local/share/icons/hicolor/scalable/apps
-install -Dm644 desktop/hyprshare.desktop     ~/.local/share/applications/
-install -Dm644 desktop/hyprshare-tui.desktop ~/.local/share/applications/
-install -Dm644 desktop/src-tauri/icons/icon.svg ~/.local/share/icons/hicolor/scalable/apps/hyprshare.svg
+mkdir -p ~/.local/share/applications ~/.local/share/icons/hicolor/scalable/apps
+# own the binaries under a stable path
+ln -sf "$PWD/desktop/src-tauri/target/release/hyprshare-desktop" ~/.local/bin/hyprshare-desktop
+ln -sf "$PWD/tui/target/release/hyprshare-tui" ~/.local/bin/hyprshare-tui
+# install the entries with absolute Exec lines
+sed "s|^Exec=hyprshare-desktop$|Exec=$HOME/.local/bin/hyprshare-desktop|" \
+  desktop/hyprshare.desktop > ~/.local/share/applications/hyprshare.desktop
+sed "s|^Exec=hyprshare-tui$|Exec=kitty --class hyprshare-tui $HOME/.local/bin/hyprshare-tui|" \
+  desktop/hyprshare-tui.desktop > ~/.local/share/applications/hyprshare-tui.desktop
+install -Dm644 desktop/src-tauri/icons/icon.svg \
+  ~/.local/share/icons/hicolor/scalable/apps/hyprshare.svg
 update-desktop-database ~/.local/share/applications
 gtk-update-icon-cache -t -f ~/.local/share/icons/hicolor 2>/dev/null || true
 ```
+
+The terminal entry names `kitty` explicitly because wofi, fuzzel and rofi do not
+open a terminal for `Terminal=true` entries.
 
 See [packaging/arch/](packaging/arch/README.md) for packaging details.
 
