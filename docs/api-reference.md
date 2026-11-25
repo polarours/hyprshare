@@ -191,8 +191,9 @@
 | `hyprshare daemon inbox list` | List the inbox listeners of the daemon |
 | `hyprshare daemon inbox start` | Let the daemon receive files into a directory |
 | `hyprshare daemon inbox stop <id>` | Stop one inbox listener of the daemon |
-| `hyprshare web serve` | Serve the REST API of the web interface |
-| `hyprshare web status` | Show how to start the web interface |
+| `hyprshare web serve [--port <port>] [--host <address>] [--detach]` | Serve the REST API of the web interface (foreground, or detached with `--detach`) |
+| `hyprshare web status [--port <port>] [--json]` | Report the server state, pid, port and version; flags a foreign process holding the port |
+| `hyprshare web stop [--json]` | Stop the recorded web server |
 | `hyprshare profiling start <name>` | Start a profiling span |
 | `hyprshare profiling stop <name>` | Stop a profiling span |
 | `hyprshare profiling report` | Show the profiling report |

@@ -4,6 +4,7 @@ import { PageHeader, Group, Row, StatusBanner, EmptyState, ActionButton } from '
 
 interface DaemonStatus { running: boolean; pid?: number; socket?: string }
 interface MobileStatus { status: string; pid?: number; port?: number }
+interface WebStatus { running: boolean; port?: number; pid?: number; version?: string; port_in_use?: boolean }
 interface RemoteStatus { status: string; pid?: number; port?: number; input_events?: number; input_backend?: string }
 interface CloudStatus { enabled: boolean; provider?: string; status?: string }
 interface CloudEntry { name?: string; path?: string; size?: number }
@@ -13,6 +14,7 @@ interface CompatProfile { id: string; display_name?: string; launch_commands?: s
 function Services() {
   const [daemon, setDaemon] = useState<DaemonStatus | null>(null)
   const [mobile, setMobile] = useState<MobileStatus | null>(null)
+  const [web, setWeb] = useState<WebStatus | null>(null)
   const [remote, setRemote] = useState<RemoteStatus | null>(null)
   const [cloud, setCloud] = useState<CloudStatus | null>(null)
   const [cloudFiles, setCloudFiles] = useState<CloudEntry[]>([])
@@ -23,6 +25,7 @@ function Services() {
 
   const [mobileDevice, setMobileDevice] = useState('')
   const [mobilePort, setMobilePort] = useState('28556')
+  const [webPort, setWebPort] = useState('8081')
   const [remotePort, setRemotePort] = useState('28557')
   const [cloudProvider, setCloudProvider] = useState('localdisk')
   const [cloudType, setCloudType] = useState('local')
@@ -38,16 +41,18 @@ function Services() {
 
   const refresh = async () => {
     setError(null)
-    const [d, m, r, c, p] = await Promise.all([
+    const [d, m, r, c, p, w] = await Promise.all([
       read<DaemonStatus>(['daemon', 'status', '--json']),
       read<MobileStatus>(['mobile', 'status', '--json']),
       read<RemoteStatus>(['remote', 'status', '--json']),
       read<CloudStatus>(['cloud', 'status', '--json']),
       read<ProfileReport>(['profiling', 'report', '--json']),
+      read<WebStatus>(['web', 'status', '--json']),
     ])
     setDaemon(d)
     setMobile(m)
     setRemote(r)
+    setWeb(w)
     setCloud(c)
     setProfiling(p)
     if (c?.enabled) {
@@ -111,7 +116,7 @@ function Services() {
       <PageHeader
         eyebrow="Connectivity"
         title="Services"
-        subtitle="Daemon, mobile transfer, remote control, cloud storage, app compatibility and profiling — every action runs the real CLI."
+        subtitle="Daemon, web UI, mobile transfer, remote control, cloud storage, app compatibility and profiling — every action runs the real CLI."
       />
 
       {!desktopAvailable() && (
@@ -134,6 +139,39 @@ function Services() {
             >
               {daemon?.running ? 'Stop' : 'Start'}
             </ActionButton>
+          }
+        />
+      </Group>
+
+      <Group title="Web UI" hint="The same interface, served for any browser on this machine.">
+        <Row
+          icon="grid"
+          title={web?.running ? 'Web UI server is running' : 'Web UI server is stopped'}
+          sub={web?.running
+            ? `Open http://127.0.0.1:${web.port ?? 8081} in a browser.`
+            : web?.port_in_use
+              ? 'Port 8081 is taken by another program — pick a different one.'
+              : 'Start it to use hyprshare from a browser.'}
+          value={web?.running && web.port ? `:${web.port}` : undefined}
+          right={
+            <div className="row-inline-inputs">
+              <input
+                className="text-input"
+                value={webPort}
+                onChange={e => setWebPort(e.target.value)}
+                placeholder="port"
+                aria-label="Web port"
+              />
+              <ActionButton
+                variant={web?.running ? 'secondary' : 'primary'}
+                icon={web?.running ? 'stop' : 'play'}
+                onClick={() => web?.running
+                  ? act(['web', 'stop', '--json'], 'Web UI server stopped')
+                  : act(['web', 'serve', '--detach', '--port', webPort, '--json'], 'Web UI server started')}
+              >
+                {web?.running ? 'Stop' : 'Start'}
+              </ActionButton>
+            </div>
           }
         />
       </Group>

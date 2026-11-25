@@ -249,8 +249,9 @@ hyprshare session receive <id> [--to <path>] [--json])");
     "hyprshare profile export <profile-id> <output-path>\n"
     "hyprshare profile import <path>");
   registry.register_command("web", hyprshare::cli::handle_web,
-    "hyprshare web <serve|status>\n"
-    "hyprshare web serve [--port <port>] [--host <address>]");
+    "hyprshare web <serve|status|stop>\n"
+    "hyprshare web serve [--port <port>] [--host <address>] [--detach]\n"
+    "hyprshare web status [--port <port>] [--json]");
   registry.register_command("profiling", hyprshare::cli::handle_profiling,
     "hyprshare profiling <start|stop|report|clear>\n"
     "hyprshare profiling start <name>\n"

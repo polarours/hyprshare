@@ -485,12 +485,21 @@ The web interface is a React application in `web/` that talks to a REST API.
 The API is served by the CLI:
 
 ```bash
-# Serve the API on the loopback address
+# Serve the API on the loopback address (foreground, Ctrl+C to stop)
 hyprshare web serve
 
 # Serve it on another port
 hyprshare web serve --port 9090
+
+# Run it in the background and manage it like the other services
+hyprshare web serve --port 9090 --detach
+hyprshare web status --json     # running state, pid, port and version
+hyprshare web stop
 ```
+
+Without `--detach` the server stays in the foreground so you keep the log
+output. `web status` reports `port_in_use` when another program holds the port,
+instead of pretending the hyprshare server is the one answering.
 
 The API exposes the local configuration and the staged sessions, so it stays
 on the loopback address unless another one is asked for with `--host`.

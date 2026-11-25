@@ -399,6 +399,33 @@ int main(int argc, char** argv) {
       "mobile status should report not_running after stop: " + after.output);
   }
 
+  // `web serve --detach` must return instead of blocking, and `web status` must
+  // identify our server rather than any process that happens to hold the port.
+  {
+    const std::string web_port = "28997";
+
+    const auto detached = run_hyprshare(binary,
+      "web serve --detach --port " + web_port + " --json");
+    expect(detached.output.find("\"status\":\"started\"") != std::string::npos,
+      "`web serve --detach` should start a detached server: " + detached.output);
+
+    const auto during = run_hyprshare(binary, "web status --json");
+    expect(during.output.find("\"running\":true") != std::string::npos,
+      "web status should see the detached server: " + during.output);
+    expect(during.output.find("\"port\":" + web_port) != std::string::npos,
+      "web status should report the detached port: " + during.output);
+    expect(during.output.find("\"version\"") != std::string::npos,
+      "web status should confirm the listener identifies as hyprshare: " + during.output);
+
+    const auto stopped = run_hyprshare(binary, "web stop --json");
+    expect(stopped.output.find("\"status\":\"stopped\"") != std::string::npos,
+      "`web stop` should report the server it stopped: " + stopped.output);
+
+    const auto after = run_hyprshare(binary, "web status --json");
+    expect(after.output.find("\"running\":false") != std::string::npos,
+      "web status should report not running after stop: " + after.output);
+  }
+
   // `share file` stages a share session by default, so the transfer chain is
   // one command away; --dry-run only inspects the manifest.
   {
@@ -444,6 +471,8 @@ int main(int argc, char** argv) {
       "profiling clear --json",
       "mobile status --json",
       "mobile stop --json",
+      "web status --json",
+      "web stop --json",
     };
     for (const auto& args : json_commands) {
       const RunResult result = run_hyprshare(binary, args);

@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **`web serve --detach`, `web status`, `web stop`** make the web API a
+  manageable service. `serve` keeps its foreground default (you want the log
+  when running a server by hand), and `--detach` spawns the same work in a child
+  process, writes pid/port files and waits for the port to answer before
+  returning — so a UI can start it and stay responsive. `status` now also
+  reports the pid and version, and it no longer claims the server is running
+  just because *some* process answers on the port: it requires either a live
+  recorded pid or an `/api/status` reply that identifies hyprshare, and reports
+  `port_in_use` otherwise. Verified: detach returns in ~56 ms, page serves 200,
+  a second detach reports `already_running`, `stop` releases the socket, and the
+  desktop Services page gained a Web UI start/stop row.
 - **`mobile serve` runs as a background service**, matching `remote`, `monitor`
   and `clipboard-sync`. It used to block the terminal forever with no way to
   query or stop it from another process. `mobile serve` now detaches (pid and
