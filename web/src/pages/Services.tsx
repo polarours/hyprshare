@@ -3,6 +3,7 @@ import { runJson, runAction, pickPath, desktopAvailable } from '../api'
 import { PageHeader, Group, Row, StatusBanner, EmptyState, ActionButton } from '../components/ui'
 
 interface DaemonStatus { running: boolean; pid?: number; socket?: string }
+interface MobileStatus { status: string; pid?: number; port?: number }
 interface RemoteStatus { status: string; pid?: number; port?: number; input_events?: number; input_backend?: string }
 interface CloudStatus { enabled: boolean; provider?: string; status?: string }
 interface CloudEntry { name?: string; path?: string; size?: number }
@@ -11,6 +12,7 @@ interface CompatProfile { id: string; display_name?: string; launch_commands?: s
 
 function Services() {
   const [daemon, setDaemon] = useState<DaemonStatus | null>(null)
+  const [mobile, setMobile] = useState<MobileStatus | null>(null)
   const [remote, setRemote] = useState<RemoteStatus | null>(null)
   const [cloud, setCloud] = useState<CloudStatus | null>(null)
   const [cloudFiles, setCloudFiles] = useState<CloudEntry[]>([])
@@ -20,6 +22,7 @@ function Services() {
   const [message, setMessage] = useState<string | null>(null)
 
   const [mobileDevice, setMobileDevice] = useState('')
+  const [mobilePort, setMobilePort] = useState('28556')
   const [remotePort, setRemotePort] = useState('28557')
   const [cloudProvider, setCloudProvider] = useState('localdisk')
   const [cloudType, setCloudType] = useState('local')
@@ -35,13 +38,15 @@ function Services() {
 
   const refresh = async () => {
     setError(null)
-    const [d, r, c, p] = await Promise.all([
+    const [d, m, r, c, p] = await Promise.all([
       read<DaemonStatus>(['daemon', 'status', '--json']),
+      read<MobileStatus>(['mobile', 'status', '--json']),
       read<RemoteStatus>(['remote', 'status', '--json']),
       read<CloudStatus>(['cloud', 'status', '--json']),
       read<ProfileReport>(['profiling', 'report', '--json']),
     ])
     setDaemon(d)
+    setMobile(m)
     setRemote(r)
     setCloud(c)
     setProfiling(p)
@@ -133,9 +138,37 @@ function Services() {
         />
       </Group>
 
-      <Group title="Mobile transfer" hint="Send a file to a paired phone or tablet.">
+      <Group title="Mobile transfer" hint="A background server that phones and tablets connect to.">
         <Row
           icon="device"
+          title={mobile?.status === 'running' ? 'Mobile server is running' : 'Mobile server is stopped'}
+          sub={mobile?.status === 'running'
+            ? `Devices can reach this machine on port ${mobile.port ?? 28556}.`
+            : 'Start it, then scan or connect from the hyprshare mobile app.'}
+          value={mobile?.status === 'running' && mobile.port ? `:${mobile.port}` : undefined}
+          right={
+            <div className="row-inline-inputs">
+              <input
+                className="text-input"
+                value={mobilePort}
+                onChange={e => setMobilePort(e.target.value)}
+                placeholder="port"
+                aria-label="Mobile port"
+              />
+              <ActionButton
+                variant={mobile?.status === 'running' ? 'secondary' : 'primary'}
+                icon={mobile?.status === 'running' ? 'stop' : 'play'}
+                onClick={() => mobile?.status === 'running'
+                  ? act(['mobile', 'stop', '--json'], 'Mobile server stopped')
+                  : act(['mobile', 'serve', '--port', mobilePort, '--json'], 'Mobile server started')}
+              >
+                {mobile?.status === 'running' ? 'Stop' : 'Start'}
+              </ActionButton>
+            </div>
+          }
+        />
+        <Row
+          icon="send"
           title="Send a file to a device"
           sub="Choose a file with the native picker after entering the device id."
           right={

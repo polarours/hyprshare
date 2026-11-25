@@ -18,29 +18,175 @@
 
 namespace hyprshare::cli {
 
-std::expected<int, std::string> handle_mobile(CommandContext&, std::vector<std::string>& args) {
+namespace {
+
+std::filesystem::path mobile_state_dir(const CommandContext& ctx) {
+  return ctx.paths.state_dir / "mobile";
+}
+
+std::filesystem::path mobile_pid_file(const CommandContext& ctx) {
+  return mobile_state_dir(ctx) / "daemon.pid";
+}
+
+std::filesystem::path mobile_port_file(const CommandContext& ctx) {
+  return mobile_state_dir(ctx) / "daemon.port";
+}
+
+std::string self_executable_path() {
+  std::array<char, 4096> buffer{};
+  const ssize_t length = readlink("/proc/self/exe", buffer.data(), buffer.size() - 1);
+  if (length <= 0) {
+    return "hyprshare";
+  }
+  return std::string(buffer.data(), static_cast<std::size_t>(length));
+}
+
+int read_pid_file(const std::filesystem::path& path) {
+  std::ifstream file(path);
+  int pid = -1;
+  file >> pid;
+  return pid;
+}
+
+bool process_alive(const int pid) {
+  return pid > 0 && kill(pid, 0) == 0;
+}
+
+}  // namespace
+
+std::expected<int, std::string> handle_mobile(CommandContext& ctx, std::vector<std::string>& args) {
   if (args.size() < 2) {
-    return std::unexpected(std::string("usage: hyprshare mobile <serve|send>"));
+    return std::unexpected(std::string("usage: hyprshare mobile <serve|status|stop|send>"));
+  }
+
+  // Internal entry point for the detached server started by `serve --detach`.
+  // Hidden from --help; the server lives only as long as this process.
+  if (args[1] == "_daemon") {
+    const auto port_str = take_option(args, "--port");
+    const uint16_t port = port_str ? static_cast<uint16_t>(std::stoul(*port_str)) : 28556;
+
+    hyprshare::mobile::MobileTransferServer server(port);
+    auto started = server.start();
+    if (!started.has_value()) {
+      std::cerr << "error: " << started.error() << "\n";
+      return 1;
+    }
+    std::cout << "Mobile transfer server started on port " << port << "\n";
+    while (server.is_running()) {
+      std::this_thread::sleep_for(std::chrono::seconds(1));
+    }
+    return 0;
   }
 
   if (args[1] == "serve") {
     const auto port_str = take_option(args, "--port");
     const uint16_t port = port_str ? static_cast<uint16_t>(std::stoul(*port_str)) : 28556;
+    const bool foreground = take_flag(args, "--foreground");
 
-    hyprshare::mobile::MobileTransferServer server(port);
-    auto start_result = server.start();
-    if (!start_result.has_value()) {
-      std::cerr << "error: " << start_result.error() << "\n";
+    const int existing = read_pid_file(mobile_pid_file(ctx));
+    if (!foreground && process_alive(existing)) {
+      if (ctx.json) {
+        std::cout << "{\"status\":\"already_running\",\"pid\":" << existing << "}\n";
+      } else {
+        std::cout << "Mobile transfer server is already running (pid " << existing << ")\n";
+      }
+      return 0;
+    }
+
+    if (foreground) {
+      hyprshare::mobile::MobileTransferServer server(port);
+      auto started = server.start();
+      if (!started.has_value()) {
+        std::cerr << "error: " << started.error() << "\n";
+        return 1;
+      }
+      if (ctx.json) {
+        std::cout << "{\"status\":\"running\",\"port\":" << port << ",\"foreground\":true}\n";
+      } else {
+        std::cout << "Mobile transfer server started on port " << port << "\n";
+        std::cout << "Press Ctrl+C to stop.\n";
+      }
+      while (server.is_running()) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+      }
+      return 0;
+    }
+
+    std::error_code error;
+    std::filesystem::create_directories(mobile_state_dir(ctx), error);
+    std::filesystem::remove(mobile_pid_file(ctx), error);
+
+    const std::string command = util::shell_quote(self_executable_path()) +
+                                " mobile _daemon --port " + std::to_string(port);
+    auto pid = ctx.runner.spawn_detached_shell(command);
+    if (!pid.has_value()) {
+      std::cerr << "error: " << pid.error() << "\n";
       return 1;
     }
-
-    std::cout << "Mobile transfer server started on port " << port << std::endl;
-    std::cout << "Press Ctrl+C to stop." << std::endl;
-
-    while (server.is_running()) {
-      std::this_thread::sleep_for(std::chrono::seconds(1));
+    {
+      std::ofstream pid_file(mobile_pid_file(ctx));
+      pid_file << *pid << "\n";
+      std::ofstream port_file(mobile_port_file(ctx));
+      port_file << port << "\n";
     }
 
+    if (ctx.json) {
+      std::cout << "{\"status\":\"started\",\"pid\":" << *pid << ",\"port\":" << port << "}\n";
+    } else {
+      std::cout << "Mobile transfer server started on port " << port << " (pid " << *pid
+                << ")\n";
+      std::cout << "Stop it with: hyprshare mobile stop\n";
+    }
+    return 0;
+  }
+
+  if (args[1] == "status") {
+    const int pid = read_pid_file(mobile_pid_file(ctx));
+    const bool running = process_alive(pid);
+    if (!running) {
+      std::error_code error;
+      std::filesystem::remove(mobile_pid_file(ctx), error);
+      std::filesystem::remove(mobile_port_file(ctx), error);
+    }
+    const int port = read_pid_file(mobile_port_file(ctx));
+
+    if (ctx.json) {
+      std::cout << "{\"status\":\"" << (running ? "running" : "not_running") << "\"";
+      if (running) {
+        std::cout << ",\"pid\":" << pid;
+      }
+      if (port > 0) {
+        std::cout << ",\"port\":" << port;
+      }
+      std::cout << "}\n";
+    } else {
+      std::cout << "Mobile transfer: " << (running ? "running" : "not running") << "\n";
+      if (running) {
+        std::cout << "  pid: " << pid << "\n";
+      }
+      if (port > 0) {
+        std::cout << "  port: " << port << "\n";
+      }
+    }
+    return 0;
+  }
+
+  if (args[1] == "stop") {
+    const int pid = read_pid_file(mobile_pid_file(ctx));
+    const bool was_running = process_alive(pid);
+    if (was_running) {
+      kill(pid, SIGTERM);
+    }
+    std::error_code error;
+    std::filesystem::remove(mobile_pid_file(ctx), error);
+    std::filesystem::remove(mobile_port_file(ctx), error);
+    if (ctx.json) {
+      std::cout << "{\"status\":\"" << (was_running ? "stopped" : "not_running")
+                << "\",\"pid\":" << (was_running ? pid : 0) << "}\n";
+    } else {
+      std::cout << "Mobile transfer server " << (was_running ? "stopped" : "was not running")
+                << "\n";
+    }
     return 0;
   }
 
@@ -86,26 +232,6 @@ std::filesystem::path remote_port_file(const CommandContext& ctx) {
 
 std::filesystem::path remote_input_log(const CommandContext& ctx) {
   return remote_state_dir(ctx) / "input.log";
-}
-
-std::string self_executable_path() {
-  std::array<char, 4096> buffer{};
-  const ssize_t length = readlink("/proc/self/exe", buffer.data(), buffer.size() - 1);
-  if (length <= 0) {
-    return "hyprshare";
-  }
-  return std::string(buffer.data(), static_cast<std::size_t>(length));
-}
-
-int read_pid_file(const std::filesystem::path& path) {
-  std::ifstream file(path);
-  int pid = -1;
-  file >> pid;
-  return pid;
-}
-
-bool process_alive(const int pid) {
-  return pid > 0 && kill(pid, 0) == 0;
 }
 
 // Reports which tool could actually inject input on this host. None of them is

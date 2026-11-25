@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **`mobile serve` runs as a background service**, matching `remote`, `monitor`
+  and `clipboard-sync`. It used to block the terminal forever with no way to
+  query or stop it from another process. `mobile serve` now detaches (pid and
+  port files under the state dir), `mobile status [--json]` reports the real
+  pid/port, and `mobile stop` terminates it; `--foreground` keeps the old
+  blocking behaviour. The desktop Services page gained a start/stop control with
+  a live status row alongside the existing "send a file" action. Verified end to
+  end: `discover` answers on the started port, a second `serve` reports
+  `already_running`, and `stop` releases the socket.
 - **Launcher integration**: `cmake --install` now installs both `.desktop`
   entries (`hyprshare` for the GUI, `hyprshare (terminal)` for the TUI) and a
   themed icon at 16/24/32/48/64/128/256/512 plus a scalable SVG. Previously

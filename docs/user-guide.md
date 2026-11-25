@@ -367,8 +367,13 @@ stays registered across invocations.
 ## Mobile and Remote Control
 
 ```bash
-# Start the mobile transfer server
+# Start the mobile transfer server in the background
 hyprshare mobile serve --port 28556
+hyprshare mobile status            # pid, port, and whether it is still up
+hyprshare mobile stop
+
+# Keep it in the foreground instead (Ctrl+C to stop)
+hyprshare mobile serve --port 28556 --foreground
 
 # Send a file to a mobile device
 hyprshare mobile send <device-id> ./photo.jpg

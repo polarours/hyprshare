@@ -368,6 +368,37 @@ int main(int argc, char** argv) {
       "remote status must not expose a stale port after stop: " + after.output);
   }
 
+  // The mobile server follows the same detached lifecycle, so a phone can reach
+  // a server that outlives the starting command.
+  {
+    const std::string mobile_port = "28986";
+
+    const auto before = run_hyprshare(binary, "mobile status --json");
+    expect(before.output.find("\"status\":\"not_running\"") != std::string::npos,
+      "mobile status should report not_running when no server exists: " + before.output);
+
+    const auto started = run_hyprshare(binary,
+      "mobile serve --port " + mobile_port + " --json");
+    expect(started.output.find("\"status\":\"started\"") != std::string::npos,
+      "`mobile serve` should detach a real server: " + started.output);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(400));
+
+    const auto during = run_hyprshare(binary, "mobile status --json");
+    expect(during.output.find("\"status\":\"running\"") != std::string::npos,
+      "mobile status should reflect the running server: " + during.output);
+    expect(during.output.find("\"port\":" + mobile_port) != std::string::npos,
+      "mobile status should report the listening port: " + during.output);
+
+    const auto stopped = run_hyprshare(binary, "mobile stop --json");
+    expect(stopped.output.find("\"status\":\"stopped\"") != std::string::npos,
+      "`mobile stop` should report the server it stopped: " + stopped.output);
+
+    const auto after = run_hyprshare(binary, "mobile status --json");
+    expect(after.output.find("\"status\":\"not_running\"") != std::string::npos,
+      "mobile status should report not_running after stop: " + after.output);
+  }
+
   // `share file` stages a share session by default, so the transfer chain is
   // one command away; --dry-run only inspects the manifest.
   {
@@ -411,6 +442,8 @@ int main(int argc, char** argv) {
       "profiling start jsonprobe --json",
       "profiling stop jsonprobe --json",
       "profiling clear --json",
+      "mobile status --json",
+      "mobile stop --json",
     };
     for (const auto& args : json_commands) {
       const RunResult result = run_hyprshare(binary, args);

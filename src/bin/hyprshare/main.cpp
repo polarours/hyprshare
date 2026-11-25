@@ -187,8 +187,8 @@ hyprshare session receive <id> [--to <path>] [--json])");
     "hyprshare record <start|stop|pause|resume|status>\n"
     "hyprshare record start [--output <path>] [--format mp4|webm|mkv] [--width <px>] [--height <px>] [--fps <n>]");
   registry.register_command("mobile", hyprshare::cli::handle_mobile,
-    "hyprshare mobile <serve|send>\n"
-    "hyprshare mobile serve [--port <port>]\n"
+    "hyprshare mobile <serve|status|stop|send>\n"
+    "hyprshare mobile serve [--port <port>] [--foreground]\n"
     "hyprshare mobile send <device-id> <file-path>");
   registry.register_command("remote", hyprshare::cli::handle_remote,
     "hyprshare remote <serve|status|stop>\n"
