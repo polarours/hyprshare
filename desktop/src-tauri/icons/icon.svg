@@ -1,20 +1,36 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="hyprshare">
   <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#2e3440"/>
-      <stop offset="1" stop-color="#3b4252"/>
+    <linearGradient id="bg" x1="0.06" y1="0" x2="0.94" y2="1">
+      <stop offset="0" stop-color="#4A7DF5"/>
+      <stop offset="0.55" stop-color="#2D63D6"/>
+      <stop offset="1" stop-color="#1B84B8"/>
     </linearGradient>
+    <linearGradient id="gloss" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.22"/>
+      <stop offset="0.5" stop-color="#ffffff" stop-opacity="0.05"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="squircle">
+      <rect x="14" y="14" width="484" height="484" rx="108" ry="108"/>
+    </clipPath>
   </defs>
-  <rect x="16" y="16" width="480" height="480" rx="96" fill="url(#bg)"/>
-  <!-- three connected nodes: a sharing symbol -->
-  <g stroke="#88c0d0" stroke-width="20" stroke-linecap="round" fill="none">
-    <line x1="150" y1="340" x2="256" y2="170"/>
-    <line x1="256" y1="170" x2="362" y2="340"/>
-    <line x1="150" y1="340" x2="362" y2="340"/>
+
+  <!-- rounded square body -->
+  <rect x="14" y="14" width="484" height="484" rx="108" ry="108" fill="url(#bg)"/>
+
+  <g clip-path="url(#squircle)">
+    <rect x="14" y="14" width="484" height="300" fill="url(#gloss)"/>
+    <rect x="14" y="14" width="484" height="484" rx="108" ry="108"
+          fill="none" stroke="#ffffff" stroke-opacity="0.16" stroke-width="4"/>
   </g>
-  <g fill="#eceff4">
-    <circle cx="150" cy="340" r="34"/>
-    <circle cx="256" cy="170" r="34"/>
-    <circle cx="362" cy="340" r="34"/>
+
+  <!-- transfer glyph: two opposing arrows, bold enough for 16-32px -->
+  <g fill="#ffffff">
+    <!-- upper arrow, pointing right -->
+    <rect x="112" y="161" width="222" height="56" rx="28"/>
+    <path d="M312 126 L396 189 L312 252 Z"/>
+    <!-- lower arrow, pointing left -->
+    <rect x="178" y="295" width="222" height="56" rx="28"/>
+    <path d="M200 260 L116 323 L200 386 Z"/>
   </g>
 </svg>

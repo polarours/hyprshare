@@ -767,6 +767,40 @@ install(FILES
   DESTINATION ${CMAKE_INSTALL_LIBDIR}/systemd/user
 )
 
+# ---------------------------------------------------------------------------
+# Launcher integration. Without these the app never appears in a desktop
+# launcher: the GUI binary alone has no .desktop entry and no themed icon.
+# ---------------------------------------------------------------------------
+install(FILES
+  desktop/hyprshare.desktop
+  desktop/hyprshare-tui.desktop
+  DESTINATION ${CMAKE_INSTALL_DATADIR}/applications
+)
+
+install(FILES
+  desktop/src-tauri/icons/icon.svg
+  DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/scalable/apps
+  RENAME hyprshare.svg
+)
+
+foreach(icon_size 16 24 32 48 64 128 256)
+  if(icon_size EQUAL 256)
+    set(icon_source "desktop/src-tauri/icons/128x128@2x.png")
+  else()
+    set(icon_source "desktop/src-tauri/icons/${icon_size}x${icon_size}.png")
+  endif()
+  install(FILES ${icon_source}
+    DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/${icon_size}x${icon_size}/apps
+    RENAME hyprshare.png
+  )
+endforeach()
+
+install(FILES
+  desktop/src-tauri/icons/icon-512.png
+  DESTINATION ${CMAKE_INSTALL_DATADIR}/icons/hicolor/512x512/apps
+  RENAME hyprshare.png
+)
+
 install(FILES
   README.md
   docs/api-reference.md

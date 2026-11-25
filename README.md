@@ -150,6 +150,19 @@ yay -S hyprshare-git
 > latest `master`, so updates arrive as soon as you pull — expect occasional
 > breakage. See [Running locally](docs/running-locally.md) to build from source.
 
+The package installs a launcher entry and a themed icon, so **hyprshare** and
+**hyprshare (terminal)** appear in your app launcher after installation. If you
+only built from source, you can register the launcher entry yourself:
+
+```bash
+install -d ~/.local/share/applications ~/.local/share/icons/hicolor/scalable/apps
+install -Dm644 desktop/hyprshare.desktop     ~/.local/share/applications/
+install -Dm644 desktop/hyprshare-tui.desktop ~/.local/share/applications/
+install -Dm644 desktop/src-tauri/icons/icon.svg ~/.local/share/icons/hicolor/scalable/apps/hyprshare.svg
+update-desktop-database ~/.local/share/applications
+gtk-update-icon-cache -t -f ~/.local/share/icons/hicolor 2>/dev/null || true
+```
+
 See [packaging/arch/](packaging/arch/README.md) for packaging details.
 
 ## 🚀 Quick start

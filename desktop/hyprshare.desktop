@@ -2,10 +2,12 @@
 Type=Application
 Name=hyprshare
 GenericName=Sharing Platform
-Comment=Share files, clipboard, and screen sessions on a local network
+Comment=Share files, clipboard and screen sessions on your local network
 Exec=hyprshare-desktop
+TryExec=hyprshare-desktop
 Icon=hyprshare
 Terminal=false
-Categories=Utility;Network;
-Keywords=share;file;clipboard;hyprland;wayland;
+Categories=Network;FileTransfer;
+Keywords=share;file;clipboard;transfer;hyprland;wayland;airdrop;
 StartupNotify=true
+StartupWMClass=hyprshare-desktop

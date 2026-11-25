@@ -40,24 +40,26 @@ build() {
 package() {
   cd "$pkgname-$pkgver"
 
+  # Installs the CLI, the daemon, the shell completions, the systemd units and
+  # the launcher integration (.desktop entries plus hicolor icons).
   DESTDIR="$pkgdir" cmake --install build
 
-  # Desktop GUI.
+  # Desktop GUI and terminal UI come from the Rust builds, which CMake does not
+  # drive, so they are installed here.
   install -Dm755 desktop/src-tauri/target/release/hyprshare-desktop "$pkgdir/usr/bin/hyprshare-desktop"
-  install -Dm644 desktop/hyprshare.desktop "$pkgdir/usr/share/applications/hyprshare.desktop"
-  install -Dm644 desktop/src-tauri/icons/icon.svg "$pkgdir/usr/share/icons/hicolor/scalable/apps/hyprshare.svg"
-  for size in 32 128 256; do
-    case "$size" in
-      256) src="128x128@2x.png" ;;
-      *)   src="${size}x${size}.png" ;;
-    esac
-    install -Dm644 "desktop/src-tauri/icons/$src" "$pkgdir/usr/share/icons/hicolor/${size}x${size}/apps/hyprshare.png"
-  done
-
-  # Terminal UI.
   install -Dm755 tui/target/release/hyprshare-tui "$pkgdir/usr/bin/hyprshare-tui"
 
   # Web frontend served by `hyprshare web serve`.
   install -d "$pkgdir/usr/share/hyprshare"
   cp -r web/dist "$pkgdir/usr/share/hyprshare/web"
+}
+
+post_install() {
+  # pacman hooks normally cover this; keep it working when they are absent.
+  update-desktop-database -q usr/share/applications 2>/dev/null || true
+  gtk-update-icon-cache -q -t -f usr/share/icons/hicolor 2>/dev/null || true
+}
+
+post_upgrade() {
+  post_install
 }

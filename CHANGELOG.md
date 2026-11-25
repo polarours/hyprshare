@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **Launcher integration**: `cmake --install` now installs both `.desktop`
+  entries (`hyprshare` for the GUI, `hyprshare (terminal)` for the TUI) and a
+  themed icon at 16/24/32/48/64/128/256/512 plus a scalable SVG. Previously
+  only the PKGBUILD copied those files, so a plain `cmake --install` (and any
+  packaging that relied on it) produced an app that never appeared in a
+  launcher. The entry declares `StartupWMClass=hyprshare-desktop` so the window
+  is grouped correctly and a single main category (`Network`).
+- **New application icon**: a blue-to-teal squircle with a bold bidirectional
+  transfer arrow, drawn as SVG and exported to every hicolor size plus ICO/ICNS
+  for the Tauri bundle. The old icon was a thin low-contrast node graph that
+  turned to mush below 48px.
+- **PKGBUILDs (repo and AUR) no longer duplicate the launcher files** — they
+  rely on `cmake --install` and add a `post_install`/`post_upgrade` that
+  refreshes the desktop database and icon cache.
 - **CLI correctness audit: ten commands now honour `--json`** (`cloud configure`,
   `profile create`, `web status`, `batch run-commands`, `sync add`, `monitor
   start/stop`, `profiling start/stop/clear`). Several of them emitted plain text

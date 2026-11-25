@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=hyprshare (terminal)
+GenericName=Sharing Platform
+Comment=Terminal dashboard for hyprshare: devices, transfers and clipboard history
+Exec=hyprshare-tui
+TryExec=hyprshare-tui
+Icon=hyprshare
+Terminal=true
+Categories=Network;FileTransfer;
+Keywords=share;file;clipboard;transfer;tui;terminal;hyprland;wayland;
+StartupNotify=false
