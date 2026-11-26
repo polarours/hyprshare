@@ -7,6 +7,7 @@
 #include "output_json.hpp"
 #include "output_text.hpp"
 #include "hyprshare/core/config.hpp"
+#include "hyprshare/config/config_validator.hpp"
 
 namespace hyprshare::cli {
 
@@ -55,6 +56,15 @@ std::expected<int, std::string> handle_config(CommandContext& ctx, std::vector<s
 
     const auto key = args[2];
     const auto value = args[3];
+
+    // Reject values the application itself would consider invalid before they
+    // reach the file: without this, `config set general.log_level loud` used to
+    // be written happily and only surface as broken behaviour later.
+    const auto validation =
+      hyprshare::config::ConfigValidator::default_validator().validate_field(key, value);
+    if (!validation.has_value()) {
+      return std::unexpected(validation.error());
+    }
 
     auto config = load_for_edit(ctx.paths);
 

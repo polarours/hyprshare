@@ -587,6 +587,20 @@ require_explicit_clipboard_approval = true
 default_session_ttl_minutes = 30
 ```
 
+Edit it with the CLI — values are validated, so an invalid one is refused with
+the reason instead of being written:
+
+```bash
+hyprshare config set general.log_level debug          # debug|info|warning|error|fatal
+hyprshare config set general.discoverability open     # paired-only|open|disabled
+hyprshare config set security.default_session_ttl_minutes 45   # 1–1440
+hyprshare config set files.receive_dir ~/Inbox        # must not be empty
+hyprshare config get general.log_level
+```
+
+The desktop app's **Settings** page edits the same keys through that command and
+shows the CLI's rejection message when a value is refused.
+
 ## Troubleshooting
 
 ### Common Issues

@@ -426,6 +426,31 @@ int main(int argc, char** argv) {
       "web status should report not running after stop: " + after.output);
   }
 
+  // `config set` must refuse values the application itself would reject, using
+  // the validator's own message, instead of writing them to the file.
+  {
+    const auto refused = run_hyprshare(binary, "config set general.log_level loud");
+    expect(refused.exit_code != 0,
+      "`config set` must fail on an invalid log level: " + refused.output);
+    expect(refused.output.find("Invalid log level") != std::string::npos,
+      "the validator's message should be reported: " + refused.output);
+
+    const auto refused_ttl = run_hyprshare(binary,
+      "config set security.default_session_ttl_minutes 5000");
+    expect(refused_ttl.exit_code != 0,
+      "`config set` must fail on an out-of-range TTL: " + refused_ttl.output);
+
+    const auto accepted = run_hyprshare(binary,
+      "config set general.log_level debug --json");
+    expect(accepted.exit_code == 0,
+      "`config set` should accept a valid log level: " + accepted.output);
+    expect(accepted.output.find("\"key\":\"general.log_level\"") != std::string::npos,
+      "the JSON shape should echo the key written: " + accepted.output);
+
+    // Put it back so later assertions see the default configuration.
+    run_hyprshare(binary, "config set general.log_level info");
+  }
+
   // `share file` stages a share session by default, so the transfer chain is
   // one command away; --dry-run only inspects the manifest.
   {

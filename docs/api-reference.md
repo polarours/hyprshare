@@ -14,7 +14,7 @@
 | `hyprshare check` | Quick health check |
 | `hyprshare support bundle` | Write a support bundle for bug reports |
 | `hyprshare config show` | Show configuration |
-| `hyprshare config set <key> <value>` | Set configuration value |
+| `hyprshare config set <key> <value>` | Set a configuration value (validated — invalid values are refused with the reason) |
 | `hyprshare config get <key>` | Get configuration value |
 
 ### Discovery and Compatibility

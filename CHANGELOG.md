@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **The Settings page is editable.** It used to be a read-only mirror that told
+  you to run `hyprshare config set` yourself — a Preferences screen you could not
+  set anything from. It now edits all eight keys with the right control for each
+  (selects for the enumerated values, checkboxes for booleans, number input for
+  the session TTL, a text field with a native folder picker for the receive
+  directory), saves through `config set`, and shows the CLI's own rejection
+  message when a value is refused. Verified by recording the emitted commands
+  (`config set general.discoverability open --json`, …) and by feeding an
+  out-of-range TTL, which surfaced "Session TTL must be between 1 and 1440
+  minutes" in the UI.
+- **`config set` now actually validates.** `ConfigValidator` existed but nothing
+  called it, so `config set general.log_level loud` was written happily and only
+  surfaced as broken behaviour later. The command now applies the validator's
+  rules first and fails with its message; a regression test covers the invalid
+  log level, the out-of-range TTL, and the accepted case.
 - **TUI grew three pages: Devices, Sessions and Capture.** The terminal front-end
   showed only Dashboard/Inbox/Clipboard while the CLI exposed 34 commands. Keys
   `1`–`6` now jump between pages, `Tab` cycles through all six, and `j`/`k` move
