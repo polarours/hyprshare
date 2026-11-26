@@ -109,6 +109,106 @@ pub struct ClipboardItem {
     pub content: String,
 }
 
+// `peer list --json`
+#[derive(Deserialize, Default, Clone)]
+pub struct PeerEntry {
+    #[serde(default)]
+    pub device_id: String,
+    #[serde(default)]
+    pub device_label: String,
+    #[serde(default)]
+    pub added_at_unix: i64,
+}
+
+// `session list --json`
+#[derive(Deserialize, Default, Clone)]
+pub struct SessionEntry {
+    #[serde(default)]
+    pub session_id: String,
+    #[serde(default)]
+    pub capability: String,
+    #[serde(default)]
+    pub share_name: String,
+    #[serde(default)]
+    pub file_count: u64,
+    #[serde(default)]
+    pub total_bytes: u64,
+}
+
+// `backend list --json`
+#[derive(Deserialize, Default, Clone)]
+pub struct BackendEntry {
+    #[serde(default)]
+    pub id: String,
+    #[serde(default)]
+    pub capability: String,
+    #[serde(default)]
+    pub support_tier: String,
+    /// Kept from the CLI payload for a future detail view; the summary table
+    /// shows the blocking reason instead of the prose description.
+    #[allow(dead_code)]
+    #[serde(default)]
+    pub summary: String,
+    #[serde(default)]
+    pub ready: bool,
+    #[serde(default)]
+    pub missing: Vec<String>,
+}
+
+impl BackendEntry {
+    /// Why a backend cannot be used, in the CLI's own vocabulary.
+    pub fn blocked_by(&self) -> String {
+        if self.missing.is_empty() {
+            "ready".into()
+        } else {
+            self.missing.join(", ").replace('_', " ")
+        }
+    }
+}
+
+impl PeerEntry {
+    pub fn label(&self) -> String {
+        if self.device_label.is_empty() {
+            self.device_id.clone()
+        } else {
+            self.device_label.clone()
+        }
+    }
+}
+
+impl SessionEntry {
+    pub fn summary(&self) -> String {
+        let name = if self.share_name.is_empty() {
+            "untitled share".to_string()
+        } else {
+            self.share_name.clone()
+        };
+        format!(
+            "{} · {} file{} · {}",
+            name,
+            self.file_count,
+            if self.file_count == 1 { "" } else { "s" },
+            human_bytes(self.total_bytes)
+        )
+    }
+}
+
+/// Compact byte sizes for the TUI, e.g. `1.4 MB`.
+pub fn human_bytes(bytes: u64) -> String {
+    const UNITS: [&str; 5] = ["B", "KB", "MB", "GB", "TB"];
+    let mut value = bytes as f64;
+    let mut unit = 0;
+    while value >= 1024.0 && unit + 1 < UNITS.len() {
+        value /= 1024.0;
+        unit += 1;
+    }
+    if unit == 0 {
+        format!("{} {}", bytes, UNITS[unit])
+    } else {
+        format!("{:.1} {}", value, UNITS[unit])
+    }
+}
+
 #[derive(Default, Clone)]
 pub struct Model {
     pub snapshot: Snapshot,
@@ -118,6 +218,9 @@ pub struct Model {
     pub inbox: Inbox,
     pub history: Vec<HistoryEntry>,
     pub clipboard_history: Vec<ClipboardItem>,
+    pub peers: Vec<PeerEntry>,
+    pub sessions: Vec<SessionEntry>,
+    pub backends: Vec<BackendEntry>,
     pub load_errors: Vec<String>,
 }
 
@@ -195,6 +298,21 @@ impl Model {
                 model.history = serde_json::from_str(&v).unwrap_or_default();
             }
         });
+        parse_into(&["peer", "list", "--json"], "peer list", &mut |v| {
+            if let Some(v) = v {
+                model.peers = serde_json::from_str(&v).unwrap_or_default();
+            }
+        });
+        parse_into(&["session", "list", "--json"], "session list", &mut |v| {
+            if let Some(v) = v {
+                model.sessions = serde_json::from_str(&v).unwrap_or_default();
+            }
+        });
+        parse_into(&["backend", "list", "--json"], "backend list", &mut |v| {
+            if let Some(v) = v {
+                model.backends = serde_json::from_str(&v).unwrap_or_default();
+            }
+        });
         parse_into(
             &["clipboard-sync", "history", "--json"],
             "clipboard history",
@@ -207,5 +325,74 @@ impl Model {
 
         model.load_errors = load_errors;
         Ok(model)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn byte_sizes_stay_readable() {
+        assert_eq!(human_bytes(0), "0 B");
+        assert_eq!(human_bytes(512), "512 B");
+        assert_eq!(human_bytes(1024), "1.0 KB");
+        assert_eq!(human_bytes(1536), "1.5 KB");
+        assert_eq!(human_bytes(5 * 1024 * 1024), "5.0 MB");
+    }
+
+    #[test]
+    fn session_summary_pluralises_file_count() {
+        let one = SessionEntry {
+            share_name: "notes.txt".into(),
+            file_count: 1,
+            total_bytes: 16,
+            ..Default::default()
+        };
+        assert_eq!(one.summary(), "notes.txt · 1 file · 16 B");
+
+        let many = SessionEntry {
+            share_name: "photos".into(),
+            file_count: 12,
+            total_bytes: 2048,
+            ..Default::default()
+        };
+        assert_eq!(many.summary(), "photos · 12 files · 2.0 KB");
+
+        let unnamed = SessionEntry::default();
+        assert_eq!(unnamed.summary(), "untitled share · 0 files · 0 B");
+    }
+
+    #[test]
+    fn blocked_backend_reads_as_prose() {
+        let ready = BackendEntry {
+            ready: true,
+            ..Default::default()
+        };
+        assert_eq!(ready.blocked_by(), "ready");
+
+        // Missing capabilities come from the CLI with underscores; the TUI shows
+        // them as words so the reason is readable at a glance.
+        let blocked = BackendEntry {
+            missing: vec!["wayland_session".into(), "pipewire_active".into()],
+            ..Default::default()
+        };
+        assert_eq!(blocked.blocked_by(), "wayland session, pipewire active");
+    }
+
+    #[test]
+    fn peer_label_falls_back_to_the_device_id() {
+        let unnamed = PeerEntry {
+            device_id: "phone-test-01".into(),
+            ..Default::default()
+        };
+        assert_eq!(unnamed.label(), "phone-test-01");
+
+        let named = PeerEntry {
+            device_id: "phone-test-01".into(),
+            device_label: "Test Phone".into(),
+            ..Default::default()
+        };
+        assert_eq!(named.label(), "Test Phone");
     }
 }

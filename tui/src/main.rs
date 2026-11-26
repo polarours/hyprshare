@@ -155,6 +155,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         KeyCode::Char('1') => app.tab = 0,
                         KeyCode::Char('2') => app.tab = 1,
                         KeyCode::Char('3') => app.tab = 2,
+                        KeyCode::Char('4') => app.tab = 3,
+                        KeyCode::Char('5') => app.tab = 4,
+                        KeyCode::Char('6') => app.tab = 5,
                         KeyCode::Char('r') if !app.write_mode => {
                             // Keep the previous model on screen so a refresh
                             // never blanks the interface.
@@ -173,11 +176,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                         KeyCode::Char('d') if !app.write_mode && app.tab == 1 => {
                             app.confirm_clear = true;
                         }
-                        // Clipboard list navigation and copy-back.
-                        KeyCode::Down | KeyCode::Char('j') if !app.write_mode && app.tab == 2 => {
+                        // List navigation: clipboard, devices and sessions.
+                        KeyCode::Down | KeyCode::Char('j')
+                            if !app.write_mode && matches!(app.tab, 2 | 3 | 4) =>
+                        {
                             app.select_next();
                         }
-                        KeyCode::Up | KeyCode::Char('k') if !app.write_mode && app.tab == 2 => {
+                        KeyCode::Up | KeyCode::Char('k')
+                            if !app.write_mode && matches!(app.tab, 2 | 3 | 4) =>
+                        {
                             app.select_prev();
                         }
                         KeyCode::Enter if !app.write_mode && app.tab == 2 => {
@@ -248,9 +255,18 @@ struct App {
     confirm_clear: bool,
     notice: Option<String>,
     clip_sel: usize,
+    dev_sel: usize,
+    sess_sel: usize,
 }
 
-const TABS: [&str; 3] = ["Dashboard", "Inbox", "Clipboard"];
+const TABS: [&str; 6] = [
+    "Dashboard",
+    "Inbox",
+    "Clipboard",
+    "Devices",
+    "Sessions",
+    "Capture",
+];
 
 impl App {
     fn new() -> Self {
@@ -265,7 +281,44 @@ impl App {
             confirm_clear: false,
             notice: None,
             clip_sel: 0,
+            dev_sel: 0,
+            sess_sel: 0,
         }
+    }
+
+    /// Length of the list the arrow keys move through on the current tab.
+    fn selectable_len(&self) -> usize {
+        let Some(model) = self.model.as_ref() else {
+            return 0;
+        };
+        match self.tab {
+            2 => model.clipboard_history.len(),
+            3 => model.peers.len(),
+            4 => model.sessions.len(),
+            _ => 0,
+        }
+    }
+
+    fn select_next(&mut self) {
+        let len = self.selectable_len();
+        if len == 0 {
+            return;
+        }
+        let slot = match self.tab {
+            3 => &mut self.dev_sel,
+            4 => &mut self.sess_sel,
+            _ => &mut self.clip_sel,
+        };
+        *slot = (*slot + 1).min(len - 1);
+    }
+
+    fn select_prev(&mut self) {
+        let slot = match self.tab {
+            3 => &mut self.dev_sel,
+            4 => &mut self.sess_sel,
+            _ => &mut self.clip_sel,
+        };
+        *slot = slot.saturating_sub(1);
     }
 
     fn next_tab(&mut self) {
@@ -276,21 +329,6 @@ impl App {
     fn prev_tab(&mut self) {
         self.tab = (self.tab + TABS.len() - 1) % TABS.len();
         self.notice = None;
-    }
-
-    fn select_next(&mut self) {
-        let len = self
-            .model
-            .as_ref()
-            .map(|m| m.clipboard_history.len())
-            .unwrap_or(0);
-        if len > 0 {
-            self.clip_sel = (self.clip_sel + 1).min(len - 1);
-        }
-    }
-
-    fn select_prev(&mut self) {
-        self.clip_sel = self.clip_sel.saturating_sub(1);
     }
 
     /// Writes the highlighted clipboard-history entry back to the clipboard.
@@ -330,7 +368,10 @@ impl App {
             Some(model) => match self.tab {
                 0 => Self::render_dashboard(frame, model, body_area),
                 1 => Self::render_inbox(frame, model, body_area),
-                _ => Self::render_clipboard(frame, model, body_area, self.clip_sel),
+                2 => Self::render_clipboard(frame, model, body_area, self.clip_sel),
+                3 => Self::render_devices(frame, model, body_area, self.dev_sel),
+                4 => Self::render_sessions(frame, model, body_area, self.sess_sel),
+                _ => Self::render_capture(frame, model, body_area),
             },
             None => {
                 let text = model_error_hint(self).unwrap_or_else(|| "loading …".to_string());
@@ -467,6 +508,15 @@ impl App {
             vec![("Enter", "write"), ("Esc", "cancel")]
         } else if self.confirm_clear {
             vec![("y", "confirm"), ("n/Esc", "cancel")]
+        } else if matches!(self.tab, 3 | 4) {
+            vec![
+                ("↑↓", "select"),
+                ("Tab", "page"),
+                ("r", "refresh"),
+                ("q", "quit"),
+            ]
+        } else if self.tab == 5 {
+            vec![("Tab", "page"), ("r", "refresh"), ("q", "quit")]
         } else if self.tab == 2 {
             vec![
                 ("↑↓", "select"),
@@ -838,6 +888,219 @@ impl App {
             )))
             .column_spacing(1);
         frame.render_widget(table, area);
+    }
+
+    /// Trusted peers plus this device's own identity.
+    fn render_devices(frame: &mut ratatui::Frame, model: &Model, area: Rect, selected: usize) {
+        if model.peers.is_empty() {
+            frame.render_widget(
+                Paragraph::new(vec![
+                    Line::from(""),
+                    Line::from(Span::styled(
+                        "No trusted devices yet",
+                        Style::new().fg(TEXT).add_modifier(Modifier::BOLD),
+                    )),
+                    Line::from(Span::styled(
+                        format!("this device: {}", model.device_label()),
+                        Style::new().fg(MUTED),
+                    )),
+                    Line::from(Span::styled(
+                        "pair one with: hyprshare peer invite create",
+                        Style::new().fg(MUTED),
+                    )),
+                ])
+                .alignment(Alignment::Center)
+                .block(panel("Devices")),
+                area,
+            );
+            return;
+        }
+
+        let rows: Vec<Row> = model
+            .peers
+            .iter()
+            .take(area.height.saturating_sub(3) as usize)
+            .enumerate()
+            .map(|(index, peer)| {
+                let is_selected = index == selected;
+                let base = if is_selected {
+                    Style::new()
+                        .bg(SURFACE)
+                        .fg(TEXT)
+                        .add_modifier(Modifier::BOLD)
+                } else {
+                    Style::new().fg(TEXT)
+                };
+                let paired = if peer.added_at_unix > 0 {
+                    time_ago(peer.added_at_unix)
+                } else {
+                    "unknown".to_string()
+                };
+                Row::new(vec![
+                    Cell::from(if is_selected { "›" } else { " " }).style(base.fg(ACCENT)),
+                    Cell::from(truncate_chars(&peer.label(), 34)).style(base),
+                    Cell::from(truncate_chars(&peer.device_id, 24)).style(Style::new().fg(MUTED)),
+                    Cell::from(paired).style(Style::new().fg(MUTED)),
+                ])
+            })
+            .collect();
+
+        let table = Table::new(
+            rows,
+            [
+                Constraint::Length(1),
+                Constraint::Min(16),
+                Constraint::Length(24),
+                Constraint::Length(12),
+            ],
+        )
+        .header(
+            Row::new(vec!["", "DEVICE", "ID", "PAIRED"])
+                .style(Style::new().fg(MUTED).add_modifier(Modifier::BOLD)),
+        )
+        .block(panel(&format!(
+            "Devices · {} trusted · this device: {}",
+            model.peers.len(),
+            model.device_label()
+        )))
+        .column_spacing(1);
+        frame.render_widget(table, area);
+    }
+
+    /// Staged share sessions.
+    fn render_sessions(frame: &mut ratatui::Frame, model: &Model, area: Rect, selected: usize) {
+        if model.sessions.is_empty() {
+            frame.render_widget(
+                Paragraph::new(vec![
+                    Line::from(""),
+                    Line::from(Span::styled(
+                        "No staged sessions",
+                        Style::new().fg(TEXT).add_modifier(Modifier::BOLD),
+                    )),
+                    Line::from(Span::styled(
+                        "stage one with: hyprshare share file <path>",
+                        Style::new().fg(MUTED),
+                    )),
+                ])
+                .alignment(Alignment::Center)
+                .block(panel("Sessions")),
+                area,
+            );
+            return;
+        }
+
+        let rows: Vec<Row> = model
+            .sessions
+            .iter()
+            .take(area.height.saturating_sub(3) as usize)
+            .enumerate()
+            .map(|(index, session)| {
+                let is_selected = index == selected;
+                let base = if is_selected {
+                    Style::new()
+                        .bg(SURFACE)
+                        .fg(TEXT)
+                        .add_modifier(Modifier::BOLD)
+                } else {
+                    Style::new().fg(TEXT)
+                };
+                Row::new(vec![
+                    Cell::from(if is_selected { "›" } else { " " }).style(base.fg(ACCENT)),
+                    Cell::from(truncate_chars(&session.summary(), 52)).style(base),
+                    Cell::from(session.capability.clone()).style(Style::new().fg(MAUVE)),
+                    Cell::from(truncate_chars(&session.session_id, 20))
+                        .style(Style::new().fg(MUTED)),
+                ])
+            })
+            .collect();
+
+        let table = Table::new(
+            rows,
+            [
+                Constraint::Length(1),
+                Constraint::Min(24),
+                Constraint::Length(12),
+                Constraint::Length(20),
+            ],
+        )
+        .header(
+            Row::new(vec!["", "SHARE", "CAPABILITY", "SESSION"])
+                .style(Style::new().fg(MUTED).add_modifier(Modifier::BOLD)),
+        )
+        .block(panel(&format!("Sessions · {}", model.sessions.len())))
+        .column_spacing(1);
+        frame.render_widget(table, area);
+    }
+
+    /// Capture backends and what each one is blocked on — the honest answer to
+    /// "why can I not share my screen yet".
+    fn render_capture(frame: &mut ratatui::Frame, model: &Model, area: Rect) {
+        if model.backends.is_empty() {
+            frame.render_widget(
+                Paragraph::new(vec![
+                    Line::from(""),
+                    Line::from(Span::styled(
+                        "No capture backends reported",
+                        Style::new().fg(TEXT).add_modifier(Modifier::BOLD),
+                    )),
+                    Line::from(Span::styled(
+                        "run: hyprshare backend list",
+                        Style::new().fg(MUTED),
+                    )),
+                ])
+                .alignment(Alignment::Center)
+                .block(panel("Capture backends")),
+                area,
+            );
+            return;
+        }
+
+        let rows: Vec<Row> = model
+            .backends
+            .iter()
+            .take(area.height.saturating_sub(3) as usize)
+            .map(|backend| {
+                let (state, style) = if backend.ready {
+                    ("ready", Style::new().fg(OK).add_modifier(Modifier::BOLD))
+                } else {
+                    ("blocked", Style::new().fg(ERR))
+                };
+                Row::new(vec![
+                    Cell::from(state).style(style),
+                    Cell::from(truncate_chars(
+                        &format!("{} ({})", backend.id, backend.support_tier),
+                        32,
+                    ))
+                    .style(Style::new().fg(TEXT)),
+                    Cell::from(backend.capability.clone()).style(Style::new().fg(MAUVE)),
+                    Cell::from(truncate_chars(&backend.blocked_by(), 40))
+                        .style(Style::new().fg(MUTED)),
+                ])
+            })
+            .collect();
+
+        frame.render_widget(
+            Table::new(
+                rows,
+                [
+                    Constraint::Length(7),
+                    Constraint::Length(34),
+                    Constraint::Length(11),
+                    Constraint::Min(20),
+                ],
+            )
+            .header(
+                Row::new(vec!["STATE", "BACKEND (TIER)", "CAPABILITY", "BLOCKED ON"])
+                    .style(Style::new().fg(MUTED).add_modifier(Modifier::BOLD)),
+            )
+            .block(panel(&format!(
+                "Capture backends · {} · {} ready",
+                model.backends.len(),
+                model.backends.iter().filter(|b| b.ready).count()
+            )))
+            .column_spacing(1),
+            area,
+        );
     }
 }
 

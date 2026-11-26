@@ -130,7 +130,7 @@ Light, dark, and follow-system themes are one click away in every page.
 | Front-end | Launch | What it is |
 |---|---|---|
 | **CLI** | `hyprshare --help` | 34 commands, the single source of truth |
-| **TUI** | `hyprshare-tui` | ratatui dashboard — device, inbox, clipboard, receiver control |
+| **TUI** | `hyprshare-tui` | ratatui interface — dashboard, inbox, clipboard, devices, sessions, capture backends |
 | **Desktop** | `hyprshare-desktop` | Tauri window, eight main pages, light/dark/system themes |
 | **Web** | `hyprshare web serve` | REST API + React frontend at `http://127.0.0.1:8080/` |
 

@@ -50,6 +50,20 @@ jobs:
             | while read -r h; do test -f "src/bin/hyprshare/$h"; done
           echo "command includes OK"
 
+  tui:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The TUI is a separate Rust crate and nothing else in this pipeline
+      # compiles it, so a break here used to reach users unnoticed.
+      - name: Build and test the TUI
+        run: |
+          set -euo pipefail
+          cargo fmt --check --manifest-path tui/Cargo.toml
+          cargo build --release --manifest-path tui/Cargo.toml
+          cargo test --manifest-path tui/Cargo.toml
+
   package:
     runs-on: ubuntu-latest
     needs: [build]

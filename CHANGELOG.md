@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **TUI grew three pages: Devices, Sessions and Capture.** The terminal front-end
+  showed only Dashboard/Inbox/Clipboard while the CLI exposed 34 commands. Keys
+  `1`–`6` now jump between pages, `Tab` cycles through all six, and `j`/`k` move
+  the selection on every list page (previously clipboard-only). Devices lists
+  trusted peers with pairing age, Sessions lists staged shares with capability,
+  file count and size, and Capture lists the screen-sharing backends with the
+  exact capability each one is missing — the honest answer to "why can I not
+  share my screen". Empty states name the real command to run.
+  Verified in tmux against real data (one added peer, one staged share, three
+  backend rows). The crate also gained its first unit tests, and CI now builds
+  and tests the TUI — a Rust break used to reach users unnoticed because nothing
+  in the pipeline compiled it.
 - **`web serve --detach`, `web status`, `web stop`** make the web API a
   manageable service. `serve` keeps its foreground default (you want the log
   when running a server by hand), and `--detach` spawns the same work in a child

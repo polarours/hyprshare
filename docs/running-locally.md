@@ -82,9 +82,20 @@ export PATH="$PWD/build:$PATH"
 ./tui/target/release/hyprshare-tui
 ```
 
-Keys: `1/2/3` switch pages, `Tab` next, `r` refresh, `w` write clipboard
-(type text, `Enter` to apply, `Esc` to cancel), `q` quit. On the Inbox page:
-`s` starts a receiver, `d` clears transfer history (with confirmation).
+Keys: `1`–`6` jump to a page, `Tab` cycles, `r` refresh, `q` quit.
+
+| Page | What it shows |
+|---|---|
+| `1 Dashboard` | Device identity, live CPU/memory/disk, health checks that need attention, recent transfers |
+| `2 Inbox` | Transfer history and receiver control (`s` starts a receiver, `d` clears history) |
+| `3 Clipboard` | Clipboard-sync history; `↑↓` selects, `Enter` writes the entry back to the clipboard, `w` writes new text |
+| `4 Devices` | Trusted peers with their id and pairing age |
+| `5 Sessions` | Staged share sessions with capability, file count and size |
+| `6 Capture` | Screen-capture backends and the exact capability each one is blocked on |
+
+The Capture page is the honest answer to "why can I not share my screen yet": it
+prints the backend's own missing-capability list (`wayland session`,
+`v4l2loopback present`, …) instead of a generic failure.
 
 ## 5. Web UI
 
