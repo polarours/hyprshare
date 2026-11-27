@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **TUI list actions: delete a session, stop trusting a device.** The new pages
+  were read-only. `d` on Sessions deletes the highlighted staged session and `d`
+  on Devices stops trusting the highlighted peer; both go through a shared
+  confirmation (`y` / `n` / `Esc`) and reload the list themselves, so the screen
+  never shows state that is already gone. The Inbox's existing "clear history"
+  was folded into the same pending-action mechanism instead of keeping its own
+  boolean. Verified in tmux against seeded data: cancelling left both lists and
+  the staged directories untouched, and confirming dropped sessions 2 → 1 on
+  disk and removed the peer from `peer list`.
 - **The Settings page is editable.** It used to be a read-only mirror that told
   you to run `hyprshare config set` yourself — a Preferences screen you could not
   set anything from. It now edits all eight keys with the right control for each

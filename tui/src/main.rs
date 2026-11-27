@@ -118,31 +118,26 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if let Event::Key(key) = event::read()? {
                 if key.kind == KeyEventKind::Press {
                     // Confirmation mode takes priority over all other keys.
-                    if app.confirm_clear {
+                    if let Some(pending) = app.confirm.clone() {
                         match key.code {
                             KeyCode::Char('y') | KeyCode::Char('Y') => {
-                                app.confirm_clear = false;
-                                app.notice = Some(
-                                    match Command::new("hyprshare")
-                                        .args(["inbox", "history", "clear", "--json"])
-                                        .output()
-                                    {
-                                        Ok(out) if out.status.success() => {
-                                            "Transfer history cleared".to_string()
-                                        }
+                                app.confirm = None;
+                                let args = pending.command();
+                                app.notice =
+                                    Some(match Command::new("hyprshare").args(&args).output() {
+                                        Ok(out) if out.status.success() => pending.done_message(),
                                         Ok(out) => format!(
                                             "failed: {}",
                                             String::from_utf8_lossy(&out.stderr).trim()
                                         ),
                                         Err(e) => format!("failed: {e}"),
-                                    },
-                                );
+                                    });
                                 app.refreshing = true;
                                 spawn_load(sender.clone());
                                 last_refresh = Instant::now();
                             }
                             KeyCode::Char('n') | KeyCode::Char('N') | KeyCode::Esc => {
-                                app.confirm_clear = false;
+                                app.confirm = None;
                             }
                             _ => {}
                         }
@@ -174,7 +169,27 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                             );
                         }
                         KeyCode::Char('d') if !app.write_mode && app.tab == 1 => {
-                            app.confirm_clear = true;
+                            app.confirm = Some(PendingAction::ClearHistory);
+                        }
+                        // Destructive actions on the list pages work on the
+                        // highlighted row and always ask before running.
+                        KeyCode::Char('d') if !app.write_mode && app.tab == 4 => {
+                            if let Some(session) = app
+                                .model
+                                .as_ref()
+                                .and_then(|m| m.sessions.get(app.sess_sel))
+                            {
+                                app.confirm =
+                                    Some(PendingAction::DeleteSession(session.session_id.clone()));
+                            }
+                        }
+                        KeyCode::Char('d') if !app.write_mode && app.tab == 3 => {
+                            if let Some(peer) =
+                                app.model.as_ref().and_then(|m| m.peers.get(app.dev_sel))
+                            {
+                                app.confirm =
+                                    Some(PendingAction::RemovePeer(peer.device_id.clone()));
+                            }
                         }
                         // List navigation: clipboard, devices and sessions.
                         KeyCode::Down | KeyCode::Char('j')
@@ -244,6 +259,49 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
+/// A destructive action waiting for the user to press `y`.
+#[derive(Clone)]
+enum PendingAction {
+    ClearHistory,
+    DeleteSession(String),
+    RemovePeer(String),
+}
+
+impl PendingAction {
+    fn prompt(&self) -> String {
+        match self {
+            Self::ClearHistory => "Clear all transfer history?".to_string(),
+            Self::DeleteSession(id) => format!("Delete staged session {id}?"),
+            Self::RemovePeer(id) => format!("Stop trusting {id}?"),
+        }
+    }
+
+    fn command(&self) -> Vec<String> {
+        match self {
+            Self::ClearHistory => ["inbox", "history", "clear", "--json"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+            Self::DeleteSession(id) => ["session", "delete", id, "--json"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+            Self::RemovePeer(id) => ["peer", "remove", id, "--json"]
+                .iter()
+                .map(|s| s.to_string())
+                .collect(),
+        }
+    }
+
+    fn done_message(&self) -> String {
+        match self {
+            Self::ClearHistory => "Transfer history cleared".to_string(),
+            Self::DeleteSession(id) => format!("deleted session {id}"),
+            Self::RemovePeer(id) => format!("stopped trusting {id}"),
+        }
+    }
+}
+
 struct App {
     tab: usize,
     model: Option<Model>,
@@ -252,7 +310,7 @@ struct App {
     write_input: String,
     write_status: String,
     serve_status: Option<String>,
-    confirm_clear: bool,
+    confirm: Option<PendingAction>,
     notice: Option<String>,
     clip_sel: usize,
     dev_sel: usize,
@@ -278,7 +336,7 @@ impl App {
             write_input: String::new(),
             write_status: String::new(),
             serve_status: None,
-            confirm_clear: false,
+            confirm: None,
             notice: None,
             clip_sel: 0,
             dev_sel: 0,
@@ -479,8 +537,8 @@ impl App {
     }
 
     fn render_footer(&self, frame: &mut ratatui::Frame, area: Rect) {
-        let message = if self.confirm_clear {
-            Some(("Clear all transfer history?".to_string(), ERR))
+        let message = if let Some(pending) = &self.confirm {
+            Some((pending.prompt(), ERR))
         } else if self.write_mode {
             None
         } else if let Some(error) = model_error_hint(self) {
@@ -506,11 +564,20 @@ impl App {
 
         let keys: Vec<(&str, &str)> = if self.write_mode {
             vec![("Enter", "write"), ("Esc", "cancel")]
-        } else if self.confirm_clear {
+        } else if self.confirm.is_some() {
             vec![("y", "confirm"), ("n/Esc", "cancel")]
-        } else if matches!(self.tab, 3 | 4) {
+        } else if self.tab == 4 {
             vec![
                 ("↑↓", "select"),
+                ("d", "delete"),
+                ("Tab", "page"),
+                ("r", "refresh"),
+                ("q", "quit"),
+            ]
+        } else if self.tab == 3 {
+            vec![
+                ("↑↓", "select"),
+                ("d", "untrust"),
                 ("Tab", "page"),
                 ("r", "refresh"),
                 ("q", "quit"),

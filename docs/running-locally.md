@@ -89,9 +89,13 @@ Keys: `1`–`6` jump to a page, `Tab` cycles, `r` refresh, `q` quit.
 | `1 Dashboard` | Device identity, live CPU/memory/disk, health checks that need attention, recent transfers |
 | `2 Inbox` | Transfer history and receiver control (`s` starts a receiver, `d` clears history) |
 | `3 Clipboard` | Clipboard-sync history; `↑↓` selects, `Enter` writes the entry back to the clipboard, `w` writes new text |
-| `4 Devices` | Trusted peers with their id and pairing age |
-| `5 Sessions` | Staged share sessions with capability, file count and size |
+| `4 Devices` | Trusted peers with their id and pairing age; `d` stops trusting the highlighted device |
+| `5 Sessions` | Staged share sessions with capability, file count and size; `d` deletes the highlighted session |
 | `6 Capture` | Screen-capture backends and the exact capability each one is blocked on |
+
+Every `d` action asks for confirmation first (`y` runs it, `n`/`Esc` cancels) and
+the list reloads by itself afterwards, so the screen never shows state that is
+no longer true.
 
 The Capture page is the honest answer to "why can I not share my screen yet": it
 prints the backend's own missing-capability list (`wayland session`,
