@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { runJson, runAction, pickPath, desktopAvailable } from '../api'
+import { runJson, runAction, pickPath, savePath, desktopAvailable } from '../api'
 import { PageHeader, Group, Row, StatusBanner, EmptyState, ActionButton } from '../components/ui'
 
 interface SelfIdentity {
@@ -17,6 +17,13 @@ interface Discovery {
   ready_to_announce: boolean
   ready_to_browse: boolean
 }
+interface InviteSummary {
+  invite_kind: string
+  from_device_id: string
+  from_device_label: string
+  created_at_unix: number
+  invite_path?: string
+}
 
 function Devices() {
   const [self, setSelf] = useState<SelfIdentity | null>(null)
@@ -25,8 +32,8 @@ function Devices() {
   const [browseResult, setBrowseResult] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [invitePath, setInvitePath] = useState('')
-  const [pairPath, setPairPath] = useState('')
+  const [inspected, setInspected] = useState<InviteSummary | null>(null)
+  const [pendingRemove, setPendingRemove] = useState<string | null>(null)
 
   const browseNetwork = async () => {
     setError(null)
@@ -59,16 +66,80 @@ function Devices() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  /** Runs a CLI action and shows what it returned, then reloads the page. */
   const act = async (args: string[], success: string) => {
     setError(null)
     setMessage(null)
     try {
       const result = await runAction(args)
-      setMessage(success + (result.trim() ? ` — ${result.trim()}` : ''))
+      const parsed = result.trim() ? safeParse(result) : null
+      const detail = parsed && typeof parsed === 'object' && 'invite_path' in parsed
+        ? ` → ${String((parsed as InviteSummary).invite_path)}`
+        : result.trim() && !result.trim().startsWith('{')
+          ? ` — ${result.trim()}`
+          : ''
+      setMessage(success + detail)
       await load()
+      return parsed
+    } catch (cause) {
+      setError(cause instanceof Error ? cause.message : String(cause))
+      return null
+    }
+  }
+
+  const createInvite = async () => {
+    const target = await savePath('hyprshare-invite.invite', 'Where to save your invitation')
+    if (!target) return
+    await act(['peer', 'invite', 'create', '--to', target, '--json'], 'Invitation created')
+  }
+
+  const inspectInvite = async () => {
+    const source = await pickPath('file')
+    if (!source) return
+    setError(null)
+    setMessage(null)
+    setInspected(null)
+    try {
+      const summary = await runJson<InviteSummary>(
+        ['peer', 'invite', 'inspect', source, '--json'],
+        0,
+      )
+      setInspected(summary)
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : String(cause))
     }
+  }
+
+  const respondToInvite = async () => {
+    const source = await pickPath('file')
+    if (!source) return
+    const target = await savePath('hyprshare-response.invite', 'Where to save your response')
+    if (!target) return
+    await act(
+      ['peer', 'invite', 'respond', source, '--to', target, '--json'],
+      'Response created — send it back to the other device',
+    )
+  }
+
+  const completePairing = async () => {
+    const source = await pickPath('file')
+    if (!source) return
+    await act(['peer', 'invite', 'complete', source, '--json'], 'Pairing complete')
+  }
+
+  const trustDeviceFile = async () => {
+    const source = await pickPath('file')
+    if (!source) return
+    await act(['peer', 'pair', source, '--json'], 'Device trusted')
+  }
+
+  const exportIdentity = async () => {
+    const target = await savePath(
+      `${self?.device_id ?? 'device'}.identity.json`,
+      'Where to save your device identity',
+    )
+    if (!target) return
+    await act(['peer', 'export', '--to', target, '--json'], 'Identity exported')
   }
 
   return (
@@ -87,13 +158,27 @@ function Devices() {
 
       {self && (
         <Group title="This device">
-          <Row icon="device" title={self.device_label} sub="Your device ID" value={<span className="mono">{self.device_id}</span>} />
+          <Row
+            icon="device"
+            title={self.device_label}
+            sub="Your device ID"
+            value={<span className="mono">{self.device_id}</span>}
+            right={
+              <ActionButton variant="secondary" icon="upload" onClick={exportIdentity}>
+                Export identity
+              </ActionButton>
+            }
+          />
         </Group>
       )}
 
       <Group title={`Trusted peers · ${peers.length}`}>
         {peers.length === 0 ? (
-          <EmptyState icon="devices" title="No trusted peers" sub="Pair with another device using an invitation file." />
+          <EmptyState
+            icon="devices"
+            title="No trusted peers"
+            sub="Pair using an invitation file, or trust an exported identity file."
+          />
         ) : (
           peers.map(peer => (
             <Row
@@ -102,55 +187,106 @@ function Devices() {
               title={peer.device_label || peer.label || peer.device_id}
               sub="Trusted peer"
               value={<span className="mono">{peer.device_id.slice(0, 12)}…</span>}
+              right={
+                pendingRemove === peer.device_id ? (
+                  <div className="row-inline-inputs">
+                    <ActionButton
+                      variant="secondary"
+                      onClick={() => setPendingRemove(null)}
+                    >
+                      Cancel
+                    </ActionButton>
+                    <ActionButton
+                      icon="trash"
+                      onClick={async () => {
+                        setPendingRemove(null)
+                        await act(['peer', 'remove', peer.device_id, '--json'], 'Stopped trusting')
+                      }}
+                    >
+                      Confirm
+                    </ActionButton>
+                  </div>
+                ) : (
+                  <ActionButton
+                    variant="secondary"
+                    icon="trash"
+                    onClick={() => setPendingRemove(peer.device_id)}
+                  >
+                    Untrust
+                  </ActionButton>
+                )
+              }
             />
           ))
         )}
       </Group>
 
-      <Group title="Pairing">
-        <div className="row" style={{ flexDirection: 'column', alignItems: 'stretch', gap: 10 }}>
-          <input
-            className="text-input"
-            placeholder="Invitation file path to create"
-            value={invitePath}
-            onChange={e => setInvitePath(e.target.value)}
-          />
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <ActionButton
-              variant="secondary"
-              icon="plus"
-              disabled={!invitePath.trim()}
-              onClick={() => act(['peer', 'invite', 'create', '--to', invitePath.trim()], 'Invitation created')}
-            >
+      <Group
+        title="Pair a device"
+        hint="Pairing exchanges two small files. Each side sends one back to the other."
+      >
+        <Row
+          icon="plus"
+          title="1 · Invite another device"
+          sub="Writes an invitation file — send it to the other device."
+          right={
+            <ActionButton icon="plus" onClick={createInvite}>
               Create invitation
             </ActionButton>
+          }
+        />
+        <Row
+          icon="file"
+          title="2 · Accept an invitation"
+          sub="Opens the file they sent, then writes a response for you to send back."
+          right={
+            <div className="row-inline-inputs">
+              <ActionButton variant="secondary" icon="search" onClick={inspectInvite}>
+                Inspect…
+              </ActionButton>
+              <ActionButton icon="link" onClick={respondToInvite}>
+                Accept…
+              </ActionButton>
+            </div>
+          }
+        />
+        {inspected && (
+          <div className="hint-text">
+            {inspected.invite_kind === 'request' ? (
+              <>
+                Invitation from <strong>{inspected.from_device_label}</strong>{' '}
+                (<span className="mono">{inspected.from_device_id.slice(0, 12)}…</span>). Accepting
+                trusts this device on your side and writes a response for them.
+              </>
+            ) : (
+              <>
+                This is a <strong>{inspected.invite_kind}</strong> reply from{' '}
+                <strong>{inspected.from_device_label}</strong> — finish the pairing with it instead
+                of accepting it.
+              </>
+            )}
           </div>
-          <input
-            className="text-input"
-            placeholder="Invitation file path to pair with"
-            value={pairPath}
-            onChange={e => setPairPath(e.target.value)}
-          />
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', flexWrap: 'wrap' }}>
-            <ActionButton
-              variant="secondary"
-              icon="file"
-              onClick={async () => {
-                const picked = await pickPath('file')
-                if (picked) setPairPath(picked)
-              }}
-            >
-              Choose invitation…
+        )}
+        <Row
+          icon="check"
+          title="3 · Finish pairing"
+          sub="Opens the response they sent back and adds them as a trusted peer."
+          right={
+            <ActionButton icon="check" onClick={completePairing}>
+              Finish…
             </ActionButton>
-            <ActionButton
-              icon="link"
-              disabled={!pairPath.trim()}
-              onClick={() => act(['peer', 'pair', pairPath.trim()], 'Paired with peer')}
-            >
-              Pair with peer
+          }
+        />
+        <Row
+          icon="shield"
+          title="Trust an exported identity"
+          sub="One-way trust: add a device from the identity file it exported."
+          right={
+            <ActionButton variant="secondary" icon="upload" onClick={trustDeviceFile}>
+              Choose identity…
             </ActionButton>
-          </div>
-        </div>
+          }
+        />
       </Group>
 
       <Group title="Local discovery">
@@ -180,6 +316,14 @@ function Devices() {
       </Group>
     </>
   )
+}
+
+function safeParse(text: string): unknown {
+  try {
+    return JSON.parse(text)
+  } catch {
+    return null
+  }
 }
 
 export default Devices

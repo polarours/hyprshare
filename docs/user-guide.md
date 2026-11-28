@@ -87,18 +87,47 @@ hyprshare inbox history
 # View device identity
 hyprshare peer self
 
-# Add a trusted peer
+# Add a trusted peer by its device id
 hyprshare peer add debian-laptop-01 --label "Debian Laptop"
 
 # List trusted peers
 hyprshare peer list
 
-# Export peer card
-hyprshare peer export --to ./my-peer.peer
+# Stop trusting a device
+hyprshare peer remove debian-laptop-01
 
-# Import peer card
-hyprshare peer import ./other-peer.peer
+# Export your identity, and trust someone else's export (one-way trust)
+hyprshare peer export --to ./my-peer.peer
+hyprshare peer pair ./other-peer.peer
 ```
+
+### Pairing two devices
+
+Pairing is a two-file handshake: each side passes one small file to the other,
+and both end up trusting each other. On the device that starts it:
+
+```bash
+# 1. Write an invitation and send it to the other device
+hyprshare peer invite create --to ./invite.req
+```
+
+On the other device:
+
+```bash
+# 2. Check who is asking, then accept — this writes a response to send back
+hyprshare peer invite inspect ./invite.req
+hyprshare peer invite respond ./invite.req --to ./invite.resp
+```
+
+Back on the first device:
+
+```bash
+# 3. Consume the response — both devices now trust each other
+hyprshare peer invite complete ./invite.resp
+```
+
+The desktop app's **Devices** page walks through the same three steps with file
+pickers, and shows who a file came from before you accept it.
 
 ### Device Discovery
 

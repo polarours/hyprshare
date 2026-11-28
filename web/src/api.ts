@@ -334,6 +334,17 @@ export async function pickPath(kind: 'file' | 'folder'): Promise<string | null> 
   return answer && answer.trim() ? answer.trim() : null
 }
 
+/** Ask for a path to write a file to. Returns null when the user cancels. */
+export async function savePath(defaultName: string, label: string): Promise<string | null> {
+  if (inTauri()) {
+    const { save } = await import('@tauri-apps/plugin-dialog')
+    const picked = await save({ defaultPath: defaultName, title: label })
+    return typeof picked === 'string' && picked.trim() ? picked : null
+  }
+  const answer = window.prompt(`${label} (path to write):`, defaultName)
+  return answer && answer.trim() ? answer.trim() : null
+}
+
 /** Run a CLI command with --json and parse the result (cached, read-only). */
 export async function runJson<T = unknown>(args: string[], cacheMs: number = DEFAULT_TTL_MS): Promise<T> {
   const text = await runCommand(args, cacheMs)

@@ -64,10 +64,13 @@
 | `hyprshare peer self` | Show device identity |
 | `hyprshare peer list` | List trusted peers |
 | `hyprshare peer inspect <path>` | Inspect a peer card |
-| `hyprshare peer pair <path>` | Pair with a peer card |
-| `hyprshare peer invite create` | Create a pairing invitation |
-| `hyprshare peer export` | Export peer card |
-| `hyprshare peer import <path>` | Import peer card |
+| `hyprshare peer pair <path>` | Trust a device from its exported identity file |
+| `hyprshare peer invite create [--to <path>]` | Step 1 — create a pairing invitation to send to the other device |
+| `hyprshare peer invite inspect <path>` | Show who sent an invitation without trusting anything |
+| `hyprshare peer invite respond <path> [--to <path>]` | Step 2 — accept an invitation; writes the response to send back |
+| `hyprshare peer invite complete <path>` | Step 3 — consume the response; both devices then trust each other |
+| `hyprshare peer export [--to <path>]` | Export this device's identity file |
+| `hyprshare peer import <path>` | Import a peer card (fails if already trusted) |
 | `hyprshare peer add <id>` | Add trusted peer |
 | `hyprshare peer remove <id>` | Remove trusted peer |
 

@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **The desktop app can now complete a pairing, not just start one.** The Devices
+  page could create an invitation but had no way to inspect one, accept one, or
+  consume the reply — so the trust handshake was CLI-only after step one. It now
+  walks the three steps (invite → inspect/accept → finish) with native file
+  pickers on both sides, shows who a file is from before trusting it, can export
+  this device's identity to trust elsewhere, and can stop trusting a peer behind
+  a confirm step. Needed `dialog:allow-save` plus a `savePath()` helper, since the
+  flow has to *write* the invitation and response, not only read them.
+  Verified end to end between two isolated identities: the exact command sequence
+  the buttons emit produced mutual trust on both sides (`A 信任: [...];
+  B 信任: [...]`), and a garbage file is refused with "peer invite file is
+  missing required fields" instead of silently trusting anything.
 - **TUI list actions: delete a session, stop trusting a device.** The new pages
   were read-only. `d` on Sessions deletes the highlighted staged session and `d`
   on Devices stops trusting the highlighted peer; both go through a shared
